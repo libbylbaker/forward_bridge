@@ -1,0 +1,69 @@
+[build-system]
+requires = [
+    "setuptools>=64",
+    "setuptools_scm>=8",
+]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "milsteins-loss"
+version = "0.0.1"
+authors = [
+  { name="Elizabeth Baker", email="elba@di.ku.dk" },
+]
+description = ""
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "jax",
+    "diffrax",
+    "matplotlib",
+    "flax"
+]
+
+
+[project.optional-dependencies]
+examples = [
+    "jupyter"]
+
+test =[
+    "pytest",
+]
+lint =[
+    "pre-commit",
+]
+format =[
+    "isort",
+    "black",
+]
+
+
+[project.urls]
+"Homepage" = "https://github.com/libbylbaker/milsteins-loss"
+
+
+[tool.ruff]
+include = ["*.py", "**/pyproject.toml", "*.ipynb"]
+# See: https://beta.ruff.rs/docs/rules/
+
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+
+
+[tool.isort]
+multi_line_output = "3"
+include_trailing_comma = "true"
+force_grid_wrap = "0"
+use_parentheses = "true"
+line_length = "88"
+
+[tool.black]
+line-length = "88"
