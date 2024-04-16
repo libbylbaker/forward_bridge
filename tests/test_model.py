@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import flax.linen as nn
 import pytest
 
-from milsteins_loss.models import ScoreMLP, ScoreUNet
+from src.models import ScoreMLP, ScoreUNet
 
 
 @pytest.fixture

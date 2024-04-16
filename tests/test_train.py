@@ -1,7 +1,7 @@
 import jax.random
 import pytest
 
-from milsteins_loss.training.utils import create_train_state, trained_score
+from src.training.utils import create_train_state, trained_score
 import flax.linen as nn
 import jax.numpy as jnp
 from flax.training.train_state import TrainState
@@ -43,6 +43,3 @@ def test_trained_score(model, x_data, t_data):
     score = score_fn(t_data[0], x_data[0])
     assert score.ndim == 1
     assert score.size == 2
-
-
-

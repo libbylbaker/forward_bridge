@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
-from milsteins_loss.training.loss import score
-from milsteins_loss.sde import bm
+from src.training.utils import get_score
+from src.data_generate_sde import sde_bm as bm
 
 
 def test_score():
@@ -11,5 +11,6 @@ def test_score():
     Y1 = jnp.array([1.0])
     drift = bm.drift
     diffusion = bm.diffusion
-    _score = score(t0, t1, Y0, Y1, drift, diffusion)
+    score_fn = get_score(drift, diffusion)
+    _score = score_fn(t0, Y0, t1, Y1)
     assert _score == jnp.array([2.0])

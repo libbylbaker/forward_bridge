@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 
 [project]
-name = "milsteins-loss"
+name = "doobs_score_matching"
 version = "0.0.1"
 authors = [
   { name="Elizabeth Baker", email="elba@di.ku.dk" },
@@ -46,16 +46,7 @@ format =[
 
 
 [project.urls]
-"Homepage" = "https://github.com/libbylbaker/milsteins-loss"
-
-
-[tool.ruff]
-include = ["*.py", "**/pyproject.toml", "*.ipynb"]
-# See: https://beta.ruff.rs/docs/rules/
-
-
-[tool.ruff.pydocstyle]
-convention = "numpy"
+"Homepage" = "https://github.com/libbylbaker/score_matching_doob.git"
 
 
 [tool.isort]
