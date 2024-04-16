@@ -17,7 +17,7 @@ def data_reverse(y, T, N):
     @jax.jit
     @jax.vmap
     def data(key):
-        _reverse = jnp.asarray(y) + forward(time_reverse, key, x0=y)
+        _reverse = forward(key, time_reverse, x0=y)
         _correction = 1.0
         return ts[..., None], _reverse, jnp.asarray(_correction)
 
@@ -31,20 +31,20 @@ def data_forward(x0, T, N):
     @jax.vmap
     def data(key):
         _correction = 1.0
-        _forward = forward(ts, key, x0=x0)
+        _forward = forward(key, ts, x0=x0)
         return ts[..., None], _forward, jnp.asarray(_correction)
 
     return data
 
 
-def forward(ts, key, x0):
+def forward(key, ts, x0):
     x0 = jnp.asarray(x0)
     assert x0.ndim == 1
     dim = x0.size
     bm = diffrax.VirtualBrownianTree(
         ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=(dim,), key=key
     )
-    return jax.vmap(bm.evaluate, in_axes=(0,))(ts)
+    return x0 + jax.vmap(bm.evaluate, in_axes=(0,))(ts)
 
 
 def vector_fields():
