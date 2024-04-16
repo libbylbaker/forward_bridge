@@ -1,19 +1,23 @@
 import jax.random as jr
 import pytest
 
-from src.data_generate_sde import time, utils
-from src.data_generate_sde import sde_ornstein_uhlenbeck
-from src.data_generate_sde import sde_interest_rates
+from src.data_generate_sde import (
+    sde_bm,
+    sde_interest_rates,
+    sde_ornstein_uhlenbeck,
+    time,
+    utils,
+)
 
 
 @pytest.fixture
 def times():
-    return time.grid(0., 1., 100)
+    return time.grid(0.0, 1.0, 100)
 
 
 @pytest.fixture
 def times_rev(times):
-    return time.reverse(1., times=times)
+    return time.reverse(1.0, times=times)
 
 
 @pytest.fixture
@@ -27,11 +31,17 @@ def keys():
 
 
 class TestDataForward:
-
-    @pytest.mark.parametrize("data_forward", [sde_ornstein_uhlenbeck.data_forward, sde_interest_rates.data_forward])
+    @pytest.mark.parametrize(
+        "data_forward",
+        [
+            sde_ornstein_uhlenbeck.data_forward,
+            sde_interest_rates.data_forward,
+            sde_bm.data_forward,
+        ],
+    )
     def test_data_forward_1d(self, data_forward, keys):
-        x0 = (1.,)
-        T = 1.
+        x0 = (1.0,)
+        T = 1.0
         N = 100
         data = data_forward(x0, T, N)
         ts, forward, correction = data(keys)
@@ -40,10 +50,17 @@ class TestDataForward:
         assert correction.shape == (5,)
         assert forward[:, 0, 0].all() == x0[0]
 
-    @pytest.mark.parametrize("data_forward", [sde_ornstein_uhlenbeck.data_forward, sde_interest_rates.data_forward])
+    @pytest.mark.parametrize(
+        "data_forward",
+        [
+            sde_ornstein_uhlenbeck.data_forward,
+            sde_interest_rates.data_forward,
+            sde_bm.data_forward,
+        ],
+    )
     def test_data_forward_2d(self, data_forward, keys):
-        x0 = (1., 1.)
-        T = 1.
+        x0 = (1.0, 1.0)
+        T = 1.0
         N = 100
         data = data_forward(x0, T, N)
         ts, forward, correction = data(keys)
@@ -54,42 +71,59 @@ class TestDataForward:
         assert forward[:, 0, 1].all() == x0[1]
 
 
-
 class TestDataReverse:
+    @pytest.mark.parametrize(
+        "data_reverse",
+        [
+            sde_ornstein_uhlenbeck.data_reverse,
+            sde_interest_rates.data_reverse,
+            sde_bm.data_reverse,
+        ],
+    )
+    def test_data_reverse_1d(self, data_reverse, keys):
+        y = (1.0,)
+        T = 1.0
+        N = 100
+        data = data_reverse(y, T, N)
+        ts, reverse, correction = data(keys)
+        assert ts.shape == (5, 100, 1)
+        assert reverse.shape == (5, 100, 1)
+        assert correction.shape == (5,)
+        assert reverse[:, 0, 0].all() == y[0]
 
-        @pytest.mark.parametrize("data_reverse", [sde_ornstein_uhlenbeck.data_reverse, sde_interest_rates.data_reverse])
-        def test_data_reverse_1d(self, data_reverse, keys):
-            y = (1.,)
-            T = 1.
-            N = 100
-            data = data_reverse(y, T, N)
-            ts, reverse, correction = data(keys)
-            assert ts.shape == (5, 100, 1)
-            assert reverse.shape == (5, 100, 1)
-            assert correction.shape == (5,)
-            assert reverse[:, 0, 0].all() == y[0]
-
-        @pytest.mark.parametrize("data_reverse", [sde_ornstein_uhlenbeck.data_reverse, sde_interest_rates.data_reverse])
-        def test_data_reverse_2d(self, data_reverse, keys):
-            y = (1., 1.)
-            T = 1.
-            N = 100
-            data = data_reverse(y, T, N)
-            ts, reverse, correction = data(keys)
-            assert ts.shape == (5, 100, 1)
-            assert reverse.shape == (5, 100, 2)
-            assert correction.shape == (5,)
-            assert reverse[:, 0, 0].all() == y[0]
-            assert reverse[:, 0, 1].all() == y[1]
+    @pytest.mark.parametrize(
+        "data_reverse",
+        [
+            sde_ornstein_uhlenbeck.data_reverse,
+            sde_interest_rates.data_reverse,
+            sde_bm.data_reverse,
+        ],
+    )
+    def test_data_reverse_2d(self, data_reverse, keys):
+        y = (1.0, 1.0)
+        T = 1.0
+        N = 100
+        data = data_reverse(y, T, N)
+        ts, reverse, correction = data(keys)
+        assert ts.shape == (5, 100, 1)
+        assert reverse.shape == (5, 100, 2)
+        assert correction.shape == (5,)
+        assert reverse[:, 0, 0].all() == y[0]
+        assert reverse[:, 0, 1].all() == y[1]
 
 
 class TestDataImportance:
-
-    @pytest.mark.parametrize("data_importance", [sde_ornstein_uhlenbeck.data_reverse_importance, sde_interest_rates.data_importance])
+    @pytest.mark.parametrize(
+        "data_importance",
+        [
+            sde_ornstein_uhlenbeck.data_reverse_importance,
+            sde_interest_rates.data_importance,
+        ],
+    )
     def test_data_importance_1d(self, data_importance, keys):
-        x0 = (1.,)
-        y = (1.,)
-        T = 1.
+        x0 = (1.0,)
+        y = (1.0,)
+        T = 1.0
         N = 100
         data = data_importance(x0, y, T, N)
         ts, reverse, correction = data(keys)
@@ -98,11 +132,17 @@ class TestDataImportance:
         assert correction.shape == (5,)
         assert reverse[:, 0, 0].all() == x0[0]
 
-    @pytest.mark.parametrize("data_importance", [sde_ornstein_uhlenbeck.data_reverse_importance, sde_interest_rates.data_importance])
+    @pytest.mark.parametrize(
+        "data_importance",
+        [
+            sde_ornstein_uhlenbeck.data_reverse_importance,
+            sde_interest_rates.data_importance,
+        ],
+    )
     def test_data_importance_2d(self, data_importance, keys):
-        x0 = (1., 1.)
-        y = (1., 1.)
-        T = 1.
+        x0 = (1.0, 1.0)
+        y = (1.0, 1.0)
+        T = 1.0
         N = 100
         data = data_importance(x0, y, T, N)
         ts, reverse, correction = data(keys)
@@ -114,23 +154,25 @@ class TestDataImportance:
 
 
 class TestScores:
-
-    @pytest.mark.parametrize("score_fn", [sde_ornstein_uhlenbeck.score, sde_interest_rates.score])
+    @pytest.mark.parametrize(
+        "score_fn",
+        [sde_ornstein_uhlenbeck.score, sde_interest_rates.score, sde_bm.score],
+    )
     def test_score_1d(self, score_fn):
-        t = 0.
-        x = (1.,)
-        T = 1.
-        y = (1.,)
+        t = 0.0
+        x = (1.0,)
+        T = 1.0
+        y = (1.0,)
 
         score = score_fn(t, x, T, y)
         assert score.ndim == 1
 
-    @pytest.mark.parametrize("score_fn", [sde_ornstein_uhlenbeck.score])
+    @pytest.mark.parametrize("score_fn", [sde_ornstein_uhlenbeck.score, sde_bm.score])
     def test_score_2d(self, score_fn):
-        t = 0.
-        x = (1., 1.)
-        T = 1.
-        y = (1., 1.)
+        t = 0.0
+        x = (1.0, 1.0)
+        T = 1.0
+        y = (1.0, 1.0)
 
         score = score_fn(t, x, T, y)
         assert score.ndim == 1
