@@ -6,17 +6,16 @@ import matplotlib.pyplot as plt
 
 import src.training.utils
 from src import plotting
-from src.data_generation import dataloader
-
-from src.models.score_mlp import ScoreMLP
 from src.data_generate_sde import bm, heston
 from src.data_generate_sde import interest_rates as ir
 from src.data_generate_sde import ornstein_uhlenbeck as ou
+from src.data_generation import dataloader
+from src.models.score_mlp import ScoreMLP
 from src.training import utils
 
 seed = 1
 
-sde = {"x0": (10., 0.25), "N": 100, "dim": 2, "T": 1.0, "y": (12., 0.3)}
+sde = {"x0": (10.0, 0.25), "N": 100, "dim": 2, "T": 1.0, "y": (12.0, 0.3)}
 
 ir = {
     "get_data": ir.data_forward,
@@ -35,7 +34,7 @@ heston = {
 }
 
 bm = {
-    "get_data": bm.get_forward_bm,
+    "get_data": bm.data_forward,
     "backward": bm.backward,
     "score": bm.score_forward,
     "diffusion": bm.diffusion,
@@ -100,7 +99,6 @@ def main():
     print("Training")
 
     for load in range(training["num_reloads"]):
-
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         data = batched_data_fn(data_key)
@@ -155,7 +153,6 @@ def main():
                     plt.plot(ts[0], traj[:, 1])
                 plt.scatter(x=sde["T"], y=sde["x0"][1])
                 plt.show()
-
 
 
 if __name__ == "__main__":

@@ -5,16 +5,16 @@ import jax.random as jr
 import matplotlib.pyplot as plt
 
 from src import plotting
-from src.data_generation import dataloader
-from src.models.score_mlp import ScoreMLP
+from src.data_generate_sde import bm, heston
 from src.data_generate_sde import interest_rates as ir
 from src.data_generate_sde import ornstein_uhlenbeck as ou
-from src.data_generate_sde import heston, bm
+from src.data_generation import dataloader
+from src.models.score_mlp import ScoreMLP
 from src.training import utils
 
 seed = 1
 
-sde = {"x0": (1.,), "N": 1000, "dim": 1, "T": 1., "y": (1.5,)}
+sde = {"x0": (1.0,), "N": 1000, "dim": 1, "T": 1.0, "y": (1.5,)}
 
 heston = {
     "get_data": heston.get_data_heston,
@@ -33,7 +33,7 @@ ir = {
 }
 
 bm = {
-    "get_data": bm.get_data_bm,
+    "get_data": bm.data_reverse,
     "conditioned": bm.conditioned,
     "score": bm.score,
     "diffusion": bm.diffusion,
@@ -69,7 +69,6 @@ training = {
 
 
 def main(key, plot_load=None, plot_epoch=None):
-    
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
@@ -82,7 +81,9 @@ def main(key, plot_load=None, plot_epoch=None):
 
     # initialise train_state, score_fn and train_step
 
-    train_state = utils.create_train_state(model, train_key, training["lr"], x_shape=x_shape, t_shape=t_shape)
+    train_state = utils.create_train_state(
+        model, train_key, training["lr"], x_shape=x_shape, t_shape=t_shape
+    )
 
     score_fn = utils.get_score(drift=sde_fns["drift"], diffusion=sde_fns["diffusion"])
 
@@ -99,7 +100,6 @@ def main(key, plot_load=None, plot_epoch=None):
     print("Training")
 
     for load in range(training["num_reloads"]):
-
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         data = batched_data_fn(data_key)
@@ -114,7 +114,7 @@ def main(key, plot_load=None, plot_epoch=None):
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
             for batch, (ts, reverse, correction) in zip(
-                    range(batches_per_epoch), infinite_dataloader
+                range(batches_per_epoch), infinite_dataloader
             ):
                 train_state, _loss = train_step(train_state, ts, reverse, correction)
                 total_loss = total_loss + _loss
@@ -141,8 +141,8 @@ def main(key, plot_load=None, plot_epoch=None):
                     sde_fns["conditioned"], in_axes=(0, None, None, None)
                 )
 
-                trajs = conditioned_traj(traj_keys,
-                    ts[0].flatten(), sde["x0"], trained_score
+                trajs = conditioned_traj(
+                    traj_keys, ts[0].flatten(), sde["x0"], trained_score
                 )
 
                 plt.title(f"Trajectories at Epoch {actual_epoch}")

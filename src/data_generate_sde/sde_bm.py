@@ -2,11 +2,10 @@ import diffrax
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import utils
-from src.data_generate_sde import time
+from src.data_generate_sde import time, utils
 
 
-def get_data_bm(y, T, N):
+def data_reverse(y, T, N):
     """
     :return: ts,
     reverse process: (t, dim), where t is the number of time steps and dim the dimension of the SDE
@@ -17,25 +16,25 @@ def get_data_bm(y, T, N):
 
     @jax.jit
     @jax.vmap
-    def data_bm(key):
-        _reverse = reverse(ts=time_reverse, key=key, y=y)
-        _correction = correction(ts=ts)
+    def data(key):
+        _reverse = jnp.asarray(y) + forward(time_reverse, key, x0=y)
+        _correction = 1.0
         return ts[..., None], _reverse, jnp.asarray(_correction)
 
-    return data_bm
+    return data
 
 
-def get_forward_bm(x0, T, N):
+def data_forward(x0, T, N):
     ts = time.grid(t_start=0, T=T, N=N)
 
     @jax.jit
     @jax.vmap
-    def forward_bm(key):
+    def data(key):
         _correction = 1.0
         _forward = forward(ts, key, x0=x0)
         return ts[..., None], _forward, jnp.asarray(_correction)
 
-    return forward_bm
+    return data
 
 
 def forward(ts, key, x0):
@@ -48,41 +47,27 @@ def forward(ts, key, x0):
     return jax.vmap(bm.evaluate, in_axes=(0,))(ts)
 
 
-def backward(ts, key, score_fn, y):
-    sol = utils.backward(key, ts, y, score_fn, drift, diffusion)
-    return sol.ys
+def vector_fields():
+    def drift(t, val_array, *args):
+        assert val_array.ndim == 1
+        dim = val_array.size
+        return jnp.zeros(shape=(dim,))
+
+    def diffusion(t, val_array, *args):
+        assert val_array.ndim == 1
+        dim = val_array.size
+        return jnp.identity(dim)
+
+    return drift, diffusion
 
 
-def conditioned(ts, key, score_fn, x0):
-    sol = utils.conditioned(key, ts, x0, score_fn, drift, diffusion)
-    return sol.ys
-
-
-def reverse(ts, key, y):
+def score(t, x, T, y):
+    x = jnp.asarray(x)
     y = jnp.asarray(y)
-    bm = forward(ts, key, y)
-    return y + bm
-
-
-def correction(ts):
-    return 1.0
-
-
-def drift(t, val_array, *args):
-    assert val_array.ndim == 1
-    dim = val_array.size
-    return jnp.zeros(shape=(dim,))
-
-
-def diffusion(t, val_array, *args):
-    assert val_array.ndim == 1
-    dim = val_array.size
-    return jnp.identity(dim)
-
-
-def score(t, x, T, x_T):
-    return (x_T - x) / (T - t)
+    return (y - x) / (T - t)
 
 
 def forward_score(t0, x0, t, x):
+    x0 = jnp.asarray(x0)
+    x = jnp.asarray(x)
     return -(x - x0) / (t - t0)
