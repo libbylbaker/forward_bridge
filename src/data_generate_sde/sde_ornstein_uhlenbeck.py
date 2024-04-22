@@ -58,11 +58,9 @@ def data_reverse_variable_y(T, N):
     @jax.vmap
     def data(key, y):
         reverse_ = utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion).ys
-        # correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
-        # correction_ = utils.solution_ode(
-        #     ts, x0=jnp.asarray([1.0]), drift=correction_drift_
-        # ).ys
-        return ts[..., None], reverse_, jnp.asarray(1.0), y
+        correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
+        correction_ = utils.solution_ode(ts, x0=jnp.asarray([1.0]), drift=correction_drift_).ys
+        return ts[..., None], reverse_, jnp.asarray(correction_)[-1, 0], y
 
     return data
 

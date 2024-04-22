@@ -16,11 +16,11 @@ from src.models.score_mlp import ScoreMLPDistributedEndpt
 from src.training import utils
 
 seed = 1
-y_min = -1.0
+min_val = -1.0
 max_val = 1.0
-checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou_varied_y_{y_min}_to_{max_val}"
+checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou_varied_y_{min_val}_to_{max_val}_guided"
 
-sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (1.0,)}
+sde = {"x0": (1.0,), "N": 1000, "dim": 1, "T": 1.0, "y": (1.0,)}
 
 drift, diffusion = ou.vector_fields()
 score_fn = utils.get_score(drift=drift, diffusion=diffusion)
@@ -30,19 +30,19 @@ data_fn = ou.data_reverse_variable_y(sde["T"], sde["N"])
 
 network = {
     "output_dim": sde["dim"],
-    "time_embedding_dim": 16,
-    "init_embedding_dim": 16,
+    "time_embedding_dim": 64,
+    "init_embedding_dim": 64,
     "activation": nn.leaky_relu,
-    "encoder_layer_dims": [16],
-    "decoder_layer_dims": [128, 128],
+    "encoder_layer_dims": [32, 32],
+    "decoder_layer_dims": [32, 32],
 }
 
 training = {
-    "batch_size": 1000,
-    "epochs_per_load": 1,
-    "lr": 0.01,
-    "num_reloads": 1000,
-    "load_size": 1000,
+    "batch_size": 128,
+    "epochs_per_load": 100,
+    "lr": 5e-3,
+    "num_reloads": 10,
+    "load_size": 2048,
 }
 
 
@@ -69,11 +69,10 @@ def main(key):
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         y_key = jr.split(data_key[0], 1)[0]
-
         y = jr.uniform(
             y_key,
             shape=(training["load_size"], sde["dim"]),
-            minval=y_min,
+            minval=min_val,
             maxval=max_val,
         )
         data = data_fn(data_key, y)
@@ -97,10 +96,10 @@ def main(key):
             last_epoch = (
                 load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             )
-            # if actual_epoch % 100 == 0 or last_epoch:
-            #     _plot(train_state, actual_epoch, ts)
-
             if actual_epoch % 100 == 0 or last_epoch:
+                _plot(train_state, actual_epoch, ts)
+
+            if actual_epoch % 500 == 0 or last_epoch:
                 _save(train_state)
 
 

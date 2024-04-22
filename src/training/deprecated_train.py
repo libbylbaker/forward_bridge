@@ -85,7 +85,7 @@ def main(key, plot_load=None, plot_epoch=None):
         model, train_key, training["lr"], x_shape=x_shape, t_shape=t_shape
     )
 
-    score_fn = utils.gradient_transition_fn(drift=sde_fns["drift"], diffusion=sde_fns["diffusion"])
+    score_fn = utils.get_score(drift=sde_fns["drift"], diffusion=sde_fns["diffusion"])
 
     train_step = utils.create_train_step_reverse(score_fn)
 

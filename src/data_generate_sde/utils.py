@@ -46,9 +46,10 @@ def solution(key, ts, x0, drift, diffusion, bm_shape=None):
     assert x0.ndim == 1
     if not bm_shape:
         bm_shape = (x0.size,)
-    bm = diffrax.VirtualBrownianTree(
-        ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=bm_shape, key=key
-    )
+    # bm = diffrax.VirtualBrownianTree(
+    #     ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=bm_shape, key=key
+    # )
+    bm = diffrax.UnsafeBrownianPath(shape=bm_shape, key=key)
     terms = diffrax.MultiTerm(diffrax.ODETerm(drift), diffrax.ControlTerm(diffusion, bm))
     solver = diffrax.Euler()
     saveat = diffrax.SaveAt(ts=ts)
@@ -60,7 +61,7 @@ def solution(key, ts, x0, drift, diffusion, bm_shape=None):
         dt0=0.01,
         y0=x0,
         saveat=saveat,
-        stepsize_controller=diffrax.ConstantStepSize(),
+        adjoint=diffrax.DirectAdjoint(),
     )
     return sol
 
