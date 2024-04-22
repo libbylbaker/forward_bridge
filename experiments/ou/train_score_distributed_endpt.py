@@ -18,7 +18,7 @@ from src.training import utils
 seed = 1
 y_min = -1.0
 max_val = 1.0
-checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou_varied_y_{y_min}_to_{max_val}"
+checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/varied_y_{y_min}_to_{max_val}"
 
 sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (1.0,)}
 
