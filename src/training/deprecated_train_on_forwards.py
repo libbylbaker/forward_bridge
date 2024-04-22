@@ -84,9 +84,9 @@ def main():
         model, train_key, training["learning_rate"], x_shape=x_shape, t_shape=t_shape
     )
 
-    score_fn = utils.get_score(drift=sde_fns["drift"], diffusion=sde_fns["diffusion"])
+    score_fn = utils.gradient_transition_fn(drift=sde_fns["drift"], diffusion=sde_fns["diffusion"])
 
-    train_step = utils.create_train_step_reverse(score_fn, utils._forward_data_setup)
+    train_step = utils.create_train_step_reverse(score_fn, utils._data_setup_forward)
 
     # data setup
     data_fn = sde_fns["get_data"](sde["x0"], sde["T"], sde["N"])
@@ -135,13 +135,9 @@ def main():
 
                 traj_keys = jax.random.split(jax.random.PRNGKey(70), 20)
 
-                backward_traj = jax.vmap(
-                    sde_fns["backward"], in_axes=(None, 0, None, None)
-                )
+                backward_traj = jax.vmap(sde_fns["backward"], in_axes=(None, 0, None, None))
 
-                trajs = backward_traj(
-                    ts[0].flatten(), traj_keys, trained_score, sde["y"]
-                )
+                trajs = backward_traj(ts[0].flatten(), traj_keys, trained_score, sde["y"])
                 plt.title(f"Trajectories at Epoch {actual_epoch}")
                 for traj in trajs:
                     plt.plot(ts[0], traj[:, 0])

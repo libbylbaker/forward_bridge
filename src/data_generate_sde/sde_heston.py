@@ -1,8 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import utils
-from src.data_generate_sde import time
+from src.data_generate_sde import time, utils
 
 mu = 0.05
 xi = 0.1
@@ -59,15 +58,15 @@ def drift(t, x, *args):
     assert x.ndim == 1
     assert x.size == 2
     x_0 = mu * x[0]
-    x_1 = kappa*(theta-x[1])
+    x_1 = kappa * (theta - x[1])
     return jnp.asarray([x_0, x_1])
 
 
 def diffusion(t, x, *args):
-    sigma_11 = jnp.sqrt(x[1])*x[0]
+    sigma_11 = jnp.sqrt(x[1]) * x[0]
     sigma_12 = 0
-    sigma_21 = xi*jnp.sqrt(x[1])*rho
-    sigma_22 = xi*jnp.sqrt(x[1])*jnp.sqrt(1-rho**2)
+    sigma_21 = xi * jnp.sqrt(x[1]) * rho
+    sigma_22 = xi * jnp.sqrt(x[1]) * jnp.sqrt(1 - rho**2)
     return jnp.asarray([[sigma_11, sigma_12], [sigma_21, sigma_22]])
 
 
@@ -79,9 +78,9 @@ def reverse_correction(key, ts, y):
     def _drift(t, x, *args):
         assert x.ndim == 1
         assert x.size == 3
-        alpha_1 = (2*x[1] + rho*xi - mu)*x[0]
-        alpha_2 = (rho*xi + kappa)*x[1] + xi**2 - kappa*theta
-        correction = (x[1] + rho*xi - mu + kappa)*x[2]
+        alpha_1 = (2 * x[1] + rho * xi - mu) * x[0]
+        alpha_2 = (rho * xi + kappa) * x[1] + xi**2 - kappa * theta
+        correction = (x[1] + rho * xi - mu + kappa) * x[2]
         return jnp.asarray([alpha_1, alpha_2, correction])
 
     def _diffusion(t, x, *args):

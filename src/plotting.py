@@ -41,7 +41,6 @@ def plot_score(
     fig.suptitle(f"Epoch: {epoch}")
 
     for col, ts in enumerate(t):
-
         if true_score is not None:
             true_score_fn = jax.vmap(true_score, in_axes=(None, 0, None, None))
             y_true = true_score_fn(ts, x.flatten(), T, y)
@@ -77,5 +76,40 @@ def plot_forward_score(
         axs[col].plot(x.flatten(), y_pred.flatten())
         axs[col].plot(x.flatten(), y_true.flatten())
         axs[col].set_title(f"Time: {ts:.2f}")
+
+    return fig, axs
+
+
+def plot_score_variable_y(true_score, learned_score, epoch):
+    x = jnp.linspace(2, 6, 100)
+    y = jnp.linspace(0, 4, 100)
+    t = jnp.asarray([0.0, 0.5, 0.75, 0.9])
+    x, y = jnp.meshgrid(x, y)
+    x = x[..., None]
+    y = y[..., None]
+
+    fig, axs = plt.subplots(nrows=1, ncols=t.size, sharey=True)
+    fig.suptitle(f"Epoch: {epoch}")
+    for col, ts in enumerate(t):
+        vectorised_learnt_score = jax.vmap(
+            jax.vmap(learned_score, in_axes=(None, 0, 0)), in_axes=(None, 0, 0)
+        )
+        score_pred = vectorised_learnt_score(ts, x, y)
+        pc = axs[col].pcolormesh(x.squeeze(), y.squeeze(), score_pred.squeeze())
+        fig.colorbar(pc, ax=axs[col])
+        axs[col].set_title(f"Time: {ts:.2f}")
+    plt.show()
+
+    fig2, axs2 = plt.subplots(nrows=1, ncols=t.size, sharey=True)
+    fig2.suptitle(f"Epoch: {epoch}")
+    for col, ts in enumerate(t):
+        vectorised_score = jax.vmap(
+            jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0)
+        )
+        score_true = vectorised_score(ts, x.squeeze(), 1.0, y.squeeze())
+        pc = axs2[col].pcolormesh(x.squeeze(), y.squeeze(), score_true.squeeze())
+        fig2.colorbar(pc, ax=axs2[col])
+        axs2[col].set_title(f"Time: {ts:.2f}")
+    plt.show()
 
     return fig, axs

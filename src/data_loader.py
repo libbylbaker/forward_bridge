@@ -4,6 +4,7 @@ import jax.random as jr
 
 def dataloader(arrays, batch_size, loop, *, key):
     dataset_size = arrays[0].shape[0]
+    assert batch_size <= dataset_size
     assert all(array.shape[0] == dataset_size for array in arrays)
     indices = jnp.arange(dataset_size)
     while True:
@@ -11,7 +12,7 @@ def dataloader(arrays, batch_size, loop, *, key):
         key = jr.split(key, 1)[0]
         start = 0
         end = batch_size
-        while end < dataset_size:
+        while end <= dataset_size:
             batch_perm = perm[start:end]
             yield tuple(array[batch_perm] for array in arrays)
             start = end

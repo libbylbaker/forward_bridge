@@ -2,7 +2,7 @@ import diffrax
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import time, utils
+from doobs_score_matching.src.data_generate_sde import time, utils
 
 
 def data_reverse(y, T, N):

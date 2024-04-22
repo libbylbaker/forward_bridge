@@ -2,8 +2,7 @@ import jax.numpy
 import jax.numpy as jnp
 from jax.scipy.special import i1
 
-from src.data_generate_sde import utils, guided_process
-from src.data_generate_sde import time
+from src.data_generate_sde import guided_process, time, utils
 
 # set to 1.5 so that we can use the bessel functions of order 1 in jax.scipy.special, when computing the true score
 _A = 1.5
@@ -36,8 +35,9 @@ def data_importance(x0, y, T, N):
         reverse process: (t, dim), where t is the number of time steps and dim the dimension of the SDE
         correction process: float, correction process at time T
         """
-        reverse_and_correction_ = utils.important_reverse_and_correction(key, time_reverse, x0, y, drift, diffusion,
-                                                                         correction_drift).ys
+        reverse_and_correction_ = utils.important_reverse_and_correction(
+            key, time_reverse, x0, y, drift, diffusion, correction_drift
+        ).ys
         reverse_ = reverse_and_correction_[:, :-1]
         correction_ = reverse_and_correction_[-1, -1]
         return ts[..., None], reverse_, jnp.asarray(correction_)
@@ -61,7 +61,9 @@ def data_reverse(y, T, N):
         correction process: float, correction process at time T
         """
         start_val = jnp.append(y, 1.0)
-        reverse_and_correction_ = utils.solution(key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion).ys
+        reverse_and_correction_ = utils.solution(
+            key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion
+        ).ys
         reverse_ = reverse_and_correction_[:, :-1]
         correction_ = reverse_and_correction_[-1, -1]
         return ts[..., None], reverse_, jnp.asarray(correction_)
@@ -76,14 +78,18 @@ def data_reverse_guided(x0, y, T, N):
     ts_reverse = time.reverse(T, ts)
     reverse_drift, reverse_diffusion = vector_fields_reverse()
     B_auxiliary, beta_auxiliary, sigma_auxiliary = reverse_guided_auxiliary(len(x0), y)
-    guide_fn = guided_process.get_guide_fn(0., T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary)
-    guided_drift, guided_diffusion = guided_process.vector_fields_guided(reverse_drift, reverse_diffusion, guide_fn)
+    guide_fn = guided_process.get_guide_fn(
+        0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary
+    )
+    guided_drift, guided_diffusion = guided_process.vector_fields_guided(
+        reverse_drift, reverse_diffusion, guide_fn
+    )
 
     @jax.jit
     @jax.vmap
     def data(key):
         reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion).ys
-        correction_ = (1.,)  # Need to work out what this should be (maybe just r.T?)
+        correction_ = (1.0,)  # Need to work out what this should be (maybe just r.T?)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 
     return data
@@ -125,7 +131,9 @@ def vector_fields_reverse_and_correction():
         assert x.ndim == 1
         _, rev_diff = vector_fields_reverse()
         rev_diffusion = rev_diff(t, x[:-1])
-        rev_corr_diff = jnp.pad(rev_diffusion, ((0, 1), (0, 1)), mode='constant', constant_values=0.0)
+        rev_corr_diff = jnp.pad(
+            rev_diffusion, ((0, 1), (0, 1)), mode="constant", constant_values=0.0
+        )
         return rev_corr_diff
 
     return drift, diffusion
@@ -133,18 +141,17 @@ def vector_fields_reverse_and_correction():
 
 def correction_drift(t, rev, corr, *args):
     assert corr.ndim == 1
-    c = (_A / (rev ** 2) + 1)
+    c = _A / (rev**2) + 1
     res = jnp.sum(c) * corr
     return res
 
 
 def reverse_guided_auxiliary(dim, y):
-
     def B_auxiliary(t):
         return jnp.identity(dim)
 
     def beta_auxiliary(t):
-        return jnp.ones(dim) * -_A/y
+        return jnp.ones(dim) * -_A / y
 
     def sigma_auxiliary(t):
         return jnp.identity(dim)
@@ -164,10 +171,8 @@ def score(t, x, T, y):
     else:
         raise ValueError("JAX's Bessel function only support a=1.5")
 
-    non_bessel_term = (-_A / x
-                       + 1.0 / (2. * x)
-                       - 2. * x / (jnp.exp(2 * (T - t)) - 1))
-    inv_bessel = 1. / bessel
+    non_bessel_term = -_A / x + 1.0 / (2.0 * x) - 2.0 * x / (jnp.exp(2 * (T - t)) - 1)
+    inv_bessel = 1.0 / bessel
     res = i1p * y / jnp.sinh(T - t)
 
     return (non_bessel_term + inv_bessel * res)[..., None]
@@ -182,10 +187,7 @@ def score_forward(t0, x0, t, x):
         x0 = x0[0]
     bessel = i1(x * x0 / jnp.sinh(t - t0))
     i1p = jax.grad(i1)
-    non_bessel_term = (_A / x
-                       + 1 / (2 * x)
-                       - 2 * x
-                       - (2 * x) / (jnp.exp(2 * (t - t0)) - 1))
+    non_bessel_term = _A / x + 1 / (2 * x) - 2 * x - (2 * x) / (jnp.exp(2 * (t - t0)) - 1)
 
     inv_bessel = 1 / bessel
     grad_bessel_term = i1p(x * x0 / jnp.sinh(t - t0)) * x0 / jnp.sinh(t - t0)

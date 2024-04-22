@@ -14,7 +14,7 @@ authors = [
 ]
 description = ""
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -22,10 +22,11 @@ classifiers = [
 ]
 
 dependencies = [
-    "jax",
+    "jax[cpu]",
     "diffrax",
     "matplotlib",
-    "flax"
+    "flax",
+    "orbax",
 ]
 
 
@@ -43,6 +44,7 @@ format =[
     "isort",
     "black",
 ]
+full = ["doobs_score_matching[examples]", "doobs_score_matching[test]", "doobs_score_matching[lint]", "doobs_score_matching[format]"]
 
 
 [project.urls]
@@ -54,7 +56,7 @@ multi_line_output = "3"
 include_trailing_comma = "true"
 force_grid_wrap = "0"
 use_parentheses = "true"
-line_length = "88"
+line_length = "99"
 
 [tool.black]
-line-length = "88"
+line-length = "99"

@@ -1,11 +1,10 @@
+import functools
+
 import diffrax
 import jax
 import jax.numpy as jnp
-import functools
 
-from src.data_generate_sde import utils, guided_process
-from src.data_generate_sde import time
-
+from src.data_generate_sde import guided_process, time, utils
 
 # Constants that are always the same but can be changed in the future
 
@@ -41,14 +40,16 @@ def data_reverse(y, T, N):
     @jax.vmap
     def data(key):
         reverse_ = utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion).ys
-        correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
-        correction_ = utils.solution_ode(ts, x0=jnp.asarray([1.0]), drift=correction_drift_).ys
-        return ts[..., None], reverse_, jnp.asarray(correction_)[-1, 0]
+        # correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
+        # correction_ = utils.solution_ode(
+        #     ts, x0=jnp.asarray([1.0]), drift=correction_drift_
+        # ).ys
+        return ts[..., None], reverse_, jnp.asarray(1.0)
 
     return data
 
 
-def data_reverse_distributed_y(T, N):
+def data_reverse_variable_y(T, N):
     ts = time.grid(t_start=0, T=T, N=N)
     ts_reverse = time.reverse(T, ts)
     reverse_drift, reverse_diffusion = vector_fields_reverse()
@@ -57,9 +58,34 @@ def data_reverse_distributed_y(T, N):
     @jax.vmap
     def data(key, y):
         reverse_ = utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion).ys
-        correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
-        correction_ = utils.solution_ode(ts, x0=jnp.asarray([1.0]), drift=correction_drift_).ys
-        return ts[..., None], reverse_, jnp.asarray(correction_)[-1, 0]
+        # correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
+        # correction_ = utils.solution_ode(
+        #     ts, x0=jnp.asarray([1.0]), drift=correction_drift_
+        # ).ys
+        return ts[..., None], reverse_, jnp.asarray(1.0), y
+
+    return data
+
+
+def data_reverse_variable_y_guided(x0, T, N):
+    x0 = jnp.asarray(x0)
+    ts = time.grid(t_start=0, T=T, N=N)
+    ts_reverse = time.reverse(T, ts)
+    reverse_drift, reverse_diffusion = vector_fields_reverse()
+    B_auxiliary, beta_auxiliary, sigma_auxiliary = reverse_guided_auxiliary(len(x0))
+    guide_fn = guided_process.get_guide_fn(
+        0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary
+    )
+    guided_drift, guided_diffusion = guided_process.vector_fields_guided(
+        reverse_drift, reverse_diffusion, guide_fn
+    )
+
+    @jax.jit
+    @jax.vmap
+    def data(key, y):
+        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion).ys
+        correction_ = (1.0,)  # Need to work out what this should be (maybe just r.T?)
+        return ts[..., None], reverse_, jnp.asarray(correction_)
 
     return data
 
@@ -72,7 +98,9 @@ def data_reverse_importance(x0, y, T, N):
     @jax.jit
     @jax.vmap
     def data(key):
-        rev_corr = utils.important_reverse_and_correction(key, ts_reverse, x0, y, reverse_drift, reverse_diffusion, drift_correction).ys
+        rev_corr = utils.important_reverse_and_correction(
+            key, ts_reverse, x0, y, reverse_drift, reverse_diffusion, drift_correction
+        ).ys
         reverse_ = rev_corr[:, :-1]
         correction_ = rev_corr[-1, -1]
         return ts[..., None], reverse_, jnp.asarray(correction_)
@@ -87,21 +115,24 @@ def data_reverse_guided(x0, y, T, N):
     ts_reverse = time.reverse(T, ts)
     reverse_drift, reverse_diffusion = vector_fields_reverse()
     B_auxiliary, beta_auxiliary, sigma_auxiliary = reverse_guided_auxiliary(len(x0))
-    guide_fn = guided_process.get_guide_fn(0., T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary)
-    guided_drift, guided_diffusion = guided_process.vector_fields_guided(reverse_drift, reverse_diffusion, guide_fn)
+    guide_fn = guided_process.get_guide_fn(
+        0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary
+    )
+    guided_drift, guided_diffusion = guided_process.vector_fields_guided(
+        reverse_drift, reverse_diffusion, guide_fn
+    )
 
     @jax.jit
     @jax.vmap
     def data(key):
         reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion).ys
-        correction_ = (1.,)  # Need to work out what this should be (maybe just r.T?)
+        correction_ = (1.0,)  # Need to work out what this should be (maybe just r.T?)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 
     return data
 
 
 def vector_fields():
-
     def drift(t, x, *args):
         """dX_t = -alpha X_t dt + sigma dW_t"""
         assert x.ndim == 1
@@ -117,7 +148,6 @@ def vector_fields():
 
 
 def vector_fields_reverse():
-
     def drift(t, rev, *args):
         return _ALPHA * rev
 
@@ -136,7 +166,6 @@ def drift_correction(t, rev, corr, *args):
 
 
 def reverse_guided_auxiliary(dim):
-
     def B_auxiliary(t):
         return _ALPHA * jnp.identity(dim)
 
@@ -144,7 +173,7 @@ def reverse_guided_auxiliary(dim):
         return jnp.zeros(dim)
 
     def sigma_auxiliary(t):
-        return _SIGMA*jnp.identity(dim)
+        return _SIGMA * jnp.identity(dim)
 
     return B_auxiliary, beta_auxiliary, sigma_auxiliary
 

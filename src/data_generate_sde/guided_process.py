@@ -1,28 +1,29 @@
-import diffrax
-import jax.numpy as jnp
-import jax
-
 from typing import Callable
+
+import diffrax
+import jax
+import jax.numpy as jnp
+
 from src.data_generate_sde import utils
 
 
 def vector_fields_guided(drift, diffusion, guide_fn):
-
     def guided_drift(t, x, *args):
-        guiding_term = (diffusion(t, x) @ (diffusion(t, x).T @ guide_fn(t, x)))
+        guiding_term = diffusion(t, x) @ (diffusion(t, x).T @ guide_fn(t, x))
         return drift(t, x) + guiding_term
 
     return guided_drift, diffusion
 
 
-def get_guide_fn(t0, T, y, sigma_auxiliary: Callable, B_auxiliary: Callable, beta_auxiliary: Callable):
+def get_guide_fn(
+    t0, T, y, sigma_auxiliary: Callable, B_auxiliary: Callable, beta_auxiliary: Callable
+):
     ode_sol = _backward_ode(t0, T, sigma_auxiliary, B_auxiliary, beta_auxiliary)
     r = _define_r(ode_sol, T, y)
     return r
 
 
 def _define_r(sol_L_M_mu: Callable, T, y: jax.Array):
-
     def r_end_pt(t, x):
         return jnp.zeros_like(x)
 
@@ -42,12 +43,14 @@ def _define_r(sol_L_M_mu: Callable, T, y: jax.Array):
     return r
 
 
-def _backward_ode(t0, T, sigma_auxiliary: Callable, B_auxiliary: Callable, beta_auxiliary: Callable):
+def _backward_ode(
+    t0, T, sigma_auxiliary: Callable, B_auxiliary: Callable, beta_auxiliary: Callable
+):
     dim = beta_auxiliary(0).shape[0]
 
     mu_T = jnp.zeros(shape=(dim,))
     sigma_T = 1e-10 * jnp.eye(dim)
-    L_T = 1. * jnp.eye(dim)
+    L_T = 1.0 * jnp.eye(dim)
     x0 = L_T, sigma_T, mu_T
 
     def drift_backward_ode_system(t, x, *args):

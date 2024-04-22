@@ -1,10 +1,9 @@
 import diffrax
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
 
 
-def conditioned(key, ts,  x0, score_fn, drift, diffusion):
-
+def conditioned(key, ts, x0, score_fn, drift, diffusion):
     x0 = jnp.asarray(x0)
 
     def _drift(t, x, *args):
@@ -18,7 +17,6 @@ def conditioned(key, ts,  x0, score_fn, drift, diffusion):
 
 
 def backward(key, ts, y, score_fn, drift, diffusion):
-
     y = jnp.asarray(y)
     T = ts[-1]
 
@@ -51,9 +49,7 @@ def solution(key, ts, x0, drift, diffusion, bm_shape=None):
     bm = diffrax.VirtualBrownianTree(
         ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=bm_shape, key=key
     )
-    terms = diffrax.MultiTerm(
-        diffrax.ODETerm(drift), diffrax.ControlTerm(diffusion, bm)
-    )
+    terms = diffrax.MultiTerm(diffrax.ODETerm(drift), diffrax.ControlTerm(diffusion, bm))
     solver = diffrax.Euler()
     saveat = diffrax.SaveAt(ts=ts)
     sol = diffrax.diffeqsolve(
@@ -61,14 +57,17 @@ def solution(key, ts, x0, drift, diffusion, bm_shape=None):
         solver,
         ts[0].astype(float),
         ts[-1].astype(float),
-        dt0=0.0005,
+        dt0=0.01,
         y0=x0,
         saveat=saveat,
+        stepsize_controller=diffrax.ConstantStepSize(),
     )
     return sol
 
 
-def important_reverse_and_correction(key, ts, x0, y, reverse_drift, reverse_diffusion, correction_drift):
+def important_reverse_and_correction(
+    key, ts, x0, y, reverse_drift, reverse_diffusion, correction_drift
+):
     y = jnp.asarray(y)
     x0 = jnp.asarray(x0)
     assert y.ndim == 1
@@ -107,7 +106,9 @@ def important_reverse_and_correction(key, ts, x0, y, reverse_drift, reverse_diff
         bottom_block_zeros = jnp.zeros(shape=(corr_next.shape[0], reverse_next.shape[1]))
         return jnp.block([[reverse_next, top_block_zeros], [corr_next, bottom_block_zeros]])
 
-    sol = solution(key, ts, x0=rev_corr, drift=_drift, diffusion=_diffusion, bm_shape=(2*y.size,))
+    sol = solution(
+        key, ts, x0=rev_corr, drift=_drift, diffusion=_diffusion, bm_shape=(2 * y.size,)
+    )
     return sol
 
 

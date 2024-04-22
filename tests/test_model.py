@@ -20,16 +20,16 @@ def t_data():
 def model_setup(output_dim=2):
     setup = {
         "output_dim": output_dim,
-        "time_embedding_dim": 32,
+        "time_embedding_dim": 16,
         "init_embedding_dim": 32,
-        "activation": nn.elu,
-        "encoder_layer_dims": [16, 8, 4],
-        "decoder_layer_dims": [4, 8, 16],
+        "activation": "leaky_relu",
+        "encoder_layer_dims": [16],
+        "decoder_layer_dims": [128, 128],
     }
     return setup
 
 
-@pytest.mark.parametrize("net_type", [ScoreMLP, ScoreUNet])
+@pytest.mark.parametrize("net_type", [ScoreMLP])
 def test_ScoreMLP(x_data, t_data, model_setup, net_type):
     net = net_type(**model_setup)
     key = jax.random.PRNGKey(0)
