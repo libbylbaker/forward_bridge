@@ -4,13 +4,10 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jax.random as jr
-import matplotlib.pyplot as plt
 import orbax
 from flax.training import orbax_utils
 
-from src import plotting
 from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
-from src.data_generate_sde import utils as sde_utils
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLPDistributedEndpt
 from src.training import utils
@@ -109,34 +106,6 @@ def _save(train_state):
     orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
     save_args = orbax_utils.save_args_from_target(ckpt)
     orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
-
-
-def _plot(train_state, actual_epoch, ts):
-    trained_score = utils.trained_score_variable_y(train_state)
-    trained_score_set_y = functools.partial(trained_score, _y=sde["y"])
-    _ = plotting.plot_score(
-        ou.score,
-        trained_score_set_y,
-        actual_epoch,
-        sde["T"],
-        sde["y"],
-        x=jnp.linspace(-1, 6, 1000)[..., None],
-    )
-
-    _ = plotting.plot_score_variable_y(ou.score, trained_score, actual_epoch)
-
-    traj_keys = jax.random.split(jax.random.PRNGKey(70), 20)
-    conditioned_traj = jax.vmap(sde_utils.conditioned, in_axes=(0, None, None, None, None, None))
-
-    trajs = conditioned_traj(
-        traj_keys, ts[0].flatten(), sde["x0"], trained_score_set_y, drift, diffusion
-    ).ys
-
-    plt.title(f"Trajectories at Epoch {actual_epoch}")
-    for traj in trajs:
-        plt.plot(ts[0], traj)
-    plt.scatter(x=sde["T"], y=sde["y"])
-    plt.show()
 
 
 if __name__ == "__main__":
