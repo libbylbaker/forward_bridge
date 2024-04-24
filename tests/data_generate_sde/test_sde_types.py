@@ -5,6 +5,7 @@ from src.data_generate_sde import (
     sde_bm,
     sde_interest_rates,
     sde_ornstein_uhlenbeck,
+    sde_time_dependent,
     time,
     utils,
 )
@@ -37,6 +38,7 @@ class TestDataForward:
             sde_ornstein_uhlenbeck.data_forward,
             sde_interest_rates.data_forward,
             sde_bm.data_forward,
+            sde_time_dependent.data_forward,
         ],
     )
     def test_data_forward_1d(self, data_forward, keys):
@@ -56,6 +58,7 @@ class TestDataForward:
             sde_ornstein_uhlenbeck.data_forward,
             sde_interest_rates.data_forward,
             sde_bm.data_forward,
+            sde_time_dependent.data_forward,
         ],
     )
     def test_data_forward_2d(self, data_forward, keys):
@@ -78,6 +81,7 @@ class TestDataReverse:
             sde_ornstein_uhlenbeck.data_reverse,
             sde_interest_rates.data_reverse,
             sde_bm.data_reverse,
+            sde_time_dependent.data_reverse,
         ],
     )
     def test_data_reverse_1d(self, data_reverse, keys):
@@ -97,6 +101,7 @@ class TestDataReverse:
             sde_ornstein_uhlenbeck.data_reverse,
             sde_interest_rates.data_reverse,
             sde_bm.data_reverse,
+            sde_time_dependent.data_reverse,
         ],
     )
     def test_data_reverse_2d(self, data_reverse, keys):
