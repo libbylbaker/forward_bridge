@@ -2,9 +2,9 @@ import flax.linen as nn
 import jax.numpy as jnp
 import jax.random
 import pytest
-from optax import adam
+from flax.training.train_state import TrainState
 
-from src.training.utils import create_train_step, trained_score
+from src.training.utils import create_train_state, trained_score
 
 
 class Model(nn.Module):
@@ -31,22 +31,25 @@ def t_data():
     return jnp.linspace(0, 1, 8, dtype=jnp.float32)
 
 
-@pytest.fixture
-def train_step(x_data, t_data, model):
-    key = jax.random.PRNGKey(0)
-    model_init_sizes = (x_data.shape, t_data.shape)
-    dt = 0.01
-    optimiser = adam(0.1)
-    return create_train_step(key, model, optimiser, *model_init_sizes, dt=dt)
-
-
-def test_create_train_state(train_step):
-    step, state = train_step
+def test_create_train_state(model, x_data, t_data):
+    state = create_train_state(
+        model,
+        jax.random.PRNGKey(0),
+        0.1,
+        x_data,
+        t_data,
+    )
     assert isinstance(state.params, dict)
 
 
-def test_trained_score(train_step, x_data, t_data):
-    step, state = train_step
+def test_trained_score(model, x_data, t_data):
+    state = create_train_state(
+        model,
+        jax.random.PRNGKey(0),
+        0.1,
+        x_data,
+        t_data,
+    )
     score_fn = trained_score(state)
     score = score_fn(t_data[0], x_data[0])
     assert score.ndim == 1

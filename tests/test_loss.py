@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
 from src.data_generate_sde import sde_bm as bm
-from src.training.utils import gradient_transition_fn
+from src.training.utils import get_score
 
 
 def test_score():
@@ -10,6 +10,6 @@ def test_score():
     Y0 = jnp.array([0.0])
     Y1 = jnp.array([1.0])
     drift, diffusion = bm.vector_fields()
-    score_fn = gradient_transition_fn(drift, diffusion)
+    score_fn = get_score(drift, diffusion)
     _score = score_fn(t0, Y0, t1, Y1)
     assert _score == jnp.array([2.0])
