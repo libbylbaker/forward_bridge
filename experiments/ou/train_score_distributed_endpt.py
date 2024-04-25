@@ -25,7 +25,7 @@ network = {
     "output_dim": sde["dim"],
     "time_embedding_dim": 16,
     "init_embedding_dim": 16,
-    "activation": nn.leaky_relu,
+    "activation": "leaky_relu",
     "encoder_layer_dims": [16],
     "decoder_layer_dims": [128, 128],
 }

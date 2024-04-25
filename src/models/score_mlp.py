@@ -11,7 +11,7 @@ class ScoreMLP(nn.Module):
     output_dim: int
     time_embedding_dim: int
     init_embedding_dim: int
-    activation: nn.activation
+    activation: str
     encoder_layer_dims: list
     decoder_layer_dims: list
 
@@ -43,7 +43,7 @@ class ScoreMLPDistributedEndpt(nn.Module):
     output_dim: int
     time_embedding_dim: int
     init_embedding_dim: int
-    activation: nn.activation
+    activation: str
     encoder_layer_dims: list
     decoder_layer_dims: list
 
@@ -73,13 +73,26 @@ class ScoreMLPDistributedEndpt(nn.Module):
 
 class MLP(nn.Module):
     output_dim: int
-    activation: nn.activation
+    activation: str
     layer_dims: list
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, train: bool) -> jnp.ndarray:
         for dim in self.layer_dims:
             x = nn.Dense(dim)(x)
-            x = self.activation(x)
+            x = get_activation(self.activation)(x)
         x = nn.Dense(self.output_dim)(x)
         return x
+
+
+def get_activation(activation: str):
+    if activation == "relu":
+        return nn.relu
+    elif activation == "leaky_relu":
+        return nn.leaky_relu
+    elif activation == "tanh":
+        return nn.tanh
+    elif activation == "sigmoid":
+        return nn.sigmoid
+    else:
+        raise ValueError(f"Activation {activation} not supported")
