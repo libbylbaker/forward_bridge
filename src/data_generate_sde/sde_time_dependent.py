@@ -3,7 +3,7 @@ import jax.numpy as jnp
 
 from src.data_generate_sde import guided_process, time, utils
 
-C = 10
+C = 1
 
 
 def data_forward(x0, T, N):
@@ -87,7 +87,7 @@ def data_reverse_guided(x0, y, T, N):
     @jax.vmap
     def data(key):
         reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion).ys
-        correction_ = (1.0,)  # Need to work out what this should be (maybe just r.T?)
+        correction_ = (1.0,)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 
     return data
@@ -102,7 +102,7 @@ def vector_fields():
         """dX_t = (a/X_t - X_t) dt + dW_t"""
         assert x.ndim == 1
         dim = x.size
-        return t / C * jnp.identity(dim)
+        return (t + 1) / C * jnp.identity(dim)
 
     return drift, diffusion
 
