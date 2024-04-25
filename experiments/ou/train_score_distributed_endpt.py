@@ -4,6 +4,7 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jax.random as jr
+import optax
 import orbax
 from flax.training import orbax_utils
 
@@ -18,12 +19,7 @@ max_val = 1.0
 checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/varied_y_{y_min}_to_{max_val}"
 
 sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (1.0,)}
-
-drift, diffusion = ou.vector_fields()
-score_fn = utils.get_score(drift=drift, diffusion=diffusion)
-train_step = utils.create_train_step_variable_y(score_fn)
-data_fn = ou.data_reverse_variable_y(sde["T"], sde["N"])
-
+dt = 0.01
 
 network = {
     "output_dim": sde["dim"],
@@ -42,22 +38,33 @@ training = {
     "load_size": 1000,
 }
 
+drift, diffusion = ou.vector_fields()
+data_fn = ou.data_reverse_variable_y(sde["T"], sde["N"])
+
+model = ScoreMLPDistributedEndpt(**network)
+optimiser = optax.adam(learning_rate=training["lr"])
+
+score_fn = utils.get_score(drift=drift, diffusion=diffusion)
+
+num_samples = training["batch_size"] * sde["N"]
+x_shape = jnp.empty(shape=(num_samples, sde["dim"]))
+t_shape = jnp.empty(shape=(num_samples, 1))
+model_init_sizes = (x_shape, x_shape, t_shape)
+
 
 def main(key):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
-
-    # initialise model and train_state
-    num_samples = training["batch_size"] * sde["N"]
-    x_shape = jnp.empty(shape=(num_samples, sde["dim"]))
-    t_shape = jnp.empty(shape=(num_samples, 1))
-    model = ScoreMLPDistributedEndpt(**network)
-    train_state = utils.create_train_state(
-        model, train_key, training["lr"], x_shape, x_shape, t_shape
+    train_step, params, opt_state = utils.create_train_step_variable_y(
+        train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
-    # training
+    # # initialise model and train_state
+    # train_state = utils.create_train_state(
+    #     model, train_key, training["lr"], x_shape, x_shape, t_shape
+    # )
 
+    # training
     batches_per_epoch = max(training["load_size"] // training["batch_size"], 1)
 
     print("Training")
@@ -80,11 +87,12 @@ def main(key):
 
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
-
             for batch, (ts, reverse, correction, y) in zip(
                 range(batches_per_epoch), infinite_dataloader
             ):
-                train_state, _loss = train_step(train_state, ts, reverse, correction, y)
+                params, opt_state, _loss = train_step(
+                    params, opt_state, ts, reverse, correction, y
+                )
                 total_loss = total_loss + _loss
             epoch_loss = total_loss / batches_per_epoch
 
@@ -94,15 +102,19 @@ def main(key):
             last_epoch = (
                 load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             )
-            # if actual_epoch % 100 == 0 or last_epoch:
-            #     _plot(train_state, actual_epoch, ts)
 
             if actual_epoch % 100 == 0 or last_epoch:
-                _save(train_state)
+                _save(params, opt_state)
 
 
-def _save(train_state):
-    ckpt = {"state": train_state, "sde": sde, "network": network, "training": training}
+def _save(params, opt_state):
+    ckpt = {
+        "params": params,
+        "opt_state": opt_state,
+        "sde": sde,
+        "network": network,
+        "training": training,
+    }
     orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
     save_args = orbax_utils.save_args_from_target(ckpt)
     orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
