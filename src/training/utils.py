@@ -20,17 +20,12 @@ def create_train_state(net, key, learning_rate, *model_args):
     )
 
 
-def trained_score(state) -> Callable:
+def trained_score(model, params) -> Callable:
     @jax.jit
     def score(_t, _x):
         assert _t.ndim == 0
         assert _x.ndim == 1
-        result = state.apply_fn(
-            {"params": state.params},
-            x=_x[jnp.newaxis, ...],
-            t=jnp.asarray([_t]),
-            train=False,
-        )
+        result = model.apply(params, _x[None, ...], jnp.asarray([_t]), train=False)
         return result.flatten()
 
     return score
