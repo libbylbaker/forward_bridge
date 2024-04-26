@@ -53,7 +53,7 @@ def plot_score_error_variable_y(true_score, learned_score, x_min, x_max, y_min, 
         eps = 1e-1
         rel_error = abs_error / (abs(score_true.squeeze()) + eps)
 
-        pc = axs[col].pcolormesh(x.squeeze(), y.squeeze(), rel_error)
+        pc = axs[col].pcolormesh(x.squeeze(), y.squeeze(), abs_error)
         axs[col].set_title(f"Time: {ts:.2f}")
     fig.colorbar(pc, ax=axs.ravel().tolist())
     plt.show()

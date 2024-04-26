@@ -30,15 +30,13 @@ def data_heatmap(times, trajectories):
 def plot_score(
     true_score,
     learned_score,
-    epoch,
     T,
     y,
-    t=jnp.asarray([0.0, 0.5, 0.75, 0.95]),
+    t=jnp.asarray([0.0, 0.25, 0.5, 0.75]),
     x=jnp.linspace(-1, 3, 1000)[..., None],
 ):
     y = y[0]
     fig, axs = plt.subplots(nrows=1, ncols=t.size, sharey=True)
-    fig.suptitle(f"Epoch: {epoch}")
 
     for col, ts in enumerate(t):
         if true_score is not None:
@@ -58,14 +56,12 @@ def plot_score(
 def plot_forward_score(
     true_score,
     learned_score,
-    epoch,
     x0,
     t=jnp.asarray([0.0, 0.5, 0.75, 0.95]),
     x=jnp.linspace(-2, 2, 1000)[..., None],
 ):
     x0 = x0[0]
     fig, axs = plt.subplots(nrows=1, ncols=t.size, sharey=True)
-    fig.suptitle(f"Epoch: {epoch}")
     for col, ts in enumerate(t):
         batch_learn_score = jax.vmap(learned_score, in_axes=(None, 0))
         y_pred = batch_learn_score(ts, x)
