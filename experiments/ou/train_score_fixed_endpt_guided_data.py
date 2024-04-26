@@ -3,6 +3,9 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import matplotlib.pyplot as plt
+import optax
+import orbax
+from flax.training import orbax_utils
 
 from src import plotting
 from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
@@ -13,44 +16,49 @@ from src.training import utils
 
 seed = 1
 
-sde = {"x0": (1.0,), "N": 1000, "dim": 1, "T": 1.0, "y": (10.0,)}
+sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (5.0,)}
+dt = 0.01
 
-drift, diffusion = ou.vector_fields()
-score_fn = utils.get_score(drift=drift, diffusion=diffusion)
-train_step = utils.create_train_step_reverse(score_fn)
-data_fn = ou.data_reverse_guided(sde["x0"], sde["y"], sde["T"], sde["N"])
-
+y = sde["y"]
+x0 = sde["x0"]
+checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/guided_data_y_{y}_d_x0_{x0}"
 
 network = {
     "output_dim": sde["dim"],
-    "time_embedding_dim": 64,
-    "init_embedding_dim": 64,
-    "activation": nn.leaky_relu,
-    "encoder_layer_dims": [32, 32],
-    "decoder_layer_dims": [32, 32],
+    "time_embedding_dim": 16,
+    "init_embedding_dim": 16,
+    "activation": "leaky_relu",
+    "encoder_layer_dims": [16],
+    "decoder_layer_dims": [128, 128],
 }
 
 training = {
-    "batch_size": 128,
-    "epochs_per_load": 50,
-    "lr": 5e-3,
-    "num_reloads": 2,
-    "load_size": 1024,
+    "batch_size": 1000,
+    "epochs_per_load": 1,
+    "lr": 0.01,
+    "num_reloads": 1000,
+    "load_size": 1000,
 }
+
+drift, diffusion = ou.vector_fields()
+data_fn = ou.data_reverse_guided(sde["x0"], sde["y"], sde["T"], sde["N"])
+
+model = ScoreMLP(**network)
+optimiser = optax.adam(learning_rate=training["lr"])
+
+score_fn = utils.get_score(drift=drift, diffusion=diffusion)
+
+x_shape = jnp.empty(shape=(1, sde["dim"]))
+t_shape = jnp.empty(shape=(1, 1))
+model_init_sizes = (x_shape, t_shape)
 
 
 def main(key):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
-    # initialise model and train_state
-
-    num_samples = training["batch_size"] * sde["N"]
-    x_shape = (num_samples, sde["dim"])
-    t_shape = (num_samples, 1)
-    model = ScoreMLP(**network)
-    train_state = utils.create_train_state(
-        model, train_key, training["lr"], x_shape=x_shape, t_shape=t_shape
+    train_step, params, opt_state = utils.create_train_step_reverse(
+        train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
     # training
@@ -66,62 +74,37 @@ def main(key):
         infinite_dataloader = dataloader(
             data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0]
         )
-        plotting.visualise_data(data)
 
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
             for batch, (ts, reverse, correction) in zip(
                 range(batches_per_epoch), infinite_dataloader
             ):
-                train_state, _loss = train_step(train_state, ts, reverse, correction)
+                params, opt_state, _loss = train_step(params, opt_state, ts, reverse, correction)
                 total_loss = total_loss + _loss
             epoch_loss = total_loss / batches_per_epoch
 
             actual_epoch = load * training["epochs_per_load"] + epoch
-            print(f"Epoch: {actual_epoch}, Loss: {epoch_loss}")
+            print(f"Load: {load}| Epoch: {epoch}| Loss: {epoch_loss}")
 
             last_epoch = (
                 load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             )
-            if actual_epoch % 20 == 0 or last_epoch:
-                trained_score = utils.trained_score(train_state)
-                _ = plotting.plot_score(
-                    ou.score,
-                    trained_score,
-                    actual_epoch,
-                    sde["T"],
-                    sde["y"],
-                    x=jnp.linspace(-1, 6, 1000)[..., None],
-                )
-                if last_epoch:
-                    x0 = sde["x0"]
-                    y = sde["y"]
-                    plt.savefig(f"ou_endpt_x0_{x0}_y_{y}_guided_score.pdf")
-                plt.show()
+            if actual_epoch % 100 == 0 or last_epoch:
+                _save(params, opt_state)
 
-                traj_keys = jax.random.split(jax.random.PRNGKey(70), 20)
-                conditioned_traj = jax.vmap(
-                    sde_utils.conditioned, in_axes=(0, None, None, None, None, None)
-                )
 
-                trajs = conditioned_traj(
-                    traj_keys,
-                    ts[0].flatten(),
-                    sde["x0"],
-                    trained_score,
-                    drift,
-                    diffusion,
-                ).ys
-
-                plt.title(f"Trajectories at Epoch {actual_epoch}")
-                for traj in trajs:
-                    plt.plot(ts[0], traj)
-                plt.scatter(x=sde["T"], y=sde["y"])
-                if last_epoch:
-                    x0 = sde["x0"]
-                    y = sde["y"]
-                    plt.savefig(f"ou_endpt_x0_{x0}_y_{y}_guided_traj.pdf")
-                plt.show()
+def _save(params, opt_state):
+    ckpt = {
+        "params": params,
+        "opt_state": opt_state,
+        "sde": sde,
+        "network": network,
+        "training": training,
+    }
+    orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+    save_args = orbax_utils.save_args_from_target(ckpt)
+    orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
 
 if __name__ == "__main__":

@@ -13,13 +13,13 @@ from src.training import utils
 
 seed = 1
 
-sde = {"x0": jnp.ones(shape=(1.0,)), "N": 100, "dim": 1, "T": 1.0, "y": (0.0,)}
+sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (1.0,)}
 dt = 0.01
 
-y = sde["y"]
+x0 = sde["x0"]
 dim = sde["dim"]
 T = sde["T"]
-checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/fixed_y_{y}_d_{dim}_T_{T}"
+checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/forward_data_fixed_x0_{x0}"
 
 network = {
     "output_dim": sde["dim"],
@@ -40,7 +40,7 @@ training = {
 
 
 drift, diffusion = ou.vector_fields()
-data_fn = ou.data_reverse(sde["y"], sde["T"], sde["N"])
+data_fn = ou.data_forward(sde["x0"], sde["T"], sde["N"])
 
 model = ScoreMLP(**network)
 optimiser = optax.adam(learning_rate=training["lr"])
@@ -55,7 +55,6 @@ model_init_sizes = (x_shape, t_shape)
 def main(key):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
-
     train_step, params, opt_state = utils.create_train_step_reverse(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
