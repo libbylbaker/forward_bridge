@@ -2,10 +2,12 @@ import flax.linen as nn
 import jax.numpy as jnp
 import jax.random
 import jax.random as jr
+import matplotlib.pyplot as plt
 import optax
 import orbax
 from flax.training import orbax_utils
 
+from src import plotting
 from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
@@ -13,7 +15,7 @@ from src.training import utils
 
 seed = 1
 
-sde = {"x0": jnp.ones(shape=(1.0,)), "N": 100, "dim": 1, "T": 1.0, "y": (0.0,)}
+sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (0.0,)}
 dt = 0.01
 
 y = sde["y"]
@@ -90,6 +92,19 @@ def main(key):
             )
             if actual_epoch % 100 == 0 or last_epoch:
                 _save(params, opt_state)
+                plot_score(model, params)
+
+
+def plot_score(model, params):
+    trained_score = utils.trained_score(model, params)
+    _ = plotting.plot_forward_score(
+        ou.score_forward,
+        trained_score,
+        sde["x0"],
+        x=jnp.linspace(-2, 2, 1000)[..., None],
+        t=jnp.asarray([0.25, 0.5, 0.75]),
+    )
+    plt.show()
 
 
 def _save(params, opt_state):

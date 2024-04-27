@@ -1,12 +1,10 @@
-import flax.linen as nn
-import jax
 import jax.numpy as jnp
 import jax.random as jr
 import matplotlib.pyplot as plt
 import optax
 
 from src import plotting
-from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
+from src.data_generate_sde import sde_bm
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
 from src.training import utils
@@ -17,7 +15,7 @@ sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (1.0,)}
 dt = 0.01
 
 x0 = sde["x0"]
-checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/fixed_x0_{x0}"
+checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/bm/fixed_x0_{x0}"
 
 network = {
     "output_dim": sde["dim"],
@@ -36,8 +34,8 @@ training = {
     "load_size": 1000,
 }
 
-drift, diffusion = ou.vector_fields()
-data_fn = ou.data_forward(sde["x0"], sde["T"], sde["N"])
+drift, diffusion = sde_bm.vector_fields()
+data_fn = sde_bm.data_forward(sde["x0"], sde["T"], sde["N"])
 
 model = ScoreMLP(**network)
 optimiser = optax.adam(learning_rate=training["lr"])
@@ -83,19 +81,15 @@ def main(key):
             print(f"Epoch: {actual_epoch}, Loss: {epoch_loss}")
 
             if actual_epoch % 100 == 0:
-                plot_score(model, params)
-
-
-def plot_score(model, params):
-    trained_score = utils.trained_score(model, params)
-    _ = plotting.plot_forward_score(
-        ou.score_forward,
-        trained_score,
-        sde["x0"],
-        x=jnp.linspace(-2, 2, 1000)[..., None],
-        t=jnp.asarray([0.25, 0.5, 0.75]),
-    )
-    plt.show()
+                trained_score = utils.trained_score(model, params)
+                _ = plotting.plot_forward_score(
+                    sde_bm.forward_score,
+                    trained_score,
+                    sde["x0"],
+                    x=jnp.linspace(-3, 5, 1000)[..., None],
+                    t=jnp.asarray([0.25, 0.5, 0.75]),
+                )
+                plt.show()
 
 
 if __name__ == "__main__":

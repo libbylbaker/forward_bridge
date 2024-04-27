@@ -41,10 +41,14 @@ def forward(key, ts, x0):
     x0 = jnp.asarray(x0)
     assert x0.ndim == 1
     dim = x0.size
-    bm = diffrax.VirtualBrownianTree(
-        ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=(dim,), key=key
-    )
-    return x0 + jax.vmap(bm.evaluate, in_axes=(0,))(ts)
+    # bm = diffrax.VirtualBrownianTree(
+    #     ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=(dim,), key=key
+    # )
+    # bm = diffrax.UnsafeBrownianPath(shape=(dim,), key=key)
+    drift, diffusion = vector_fields()
+    bm = utils.solution(key, ts, x0, drift, diffusion)
+    # return jax.vmap(bm.evaluate, in_axes=(0,))(ts)
+    return bm
 
 
 def vector_fields():

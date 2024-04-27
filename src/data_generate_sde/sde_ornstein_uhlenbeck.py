@@ -20,7 +20,7 @@ def data_forward(x0, T, N):
     @jax.vmap
     def data(key):
         correction_ = 1.0
-        forward_ = utils.solution(key, ts, x0, drift, diffusion).ys
+        forward_ = utils.solution(key, ts, x0, drift, diffusion)
         return ts[..., None], forward_, jnp.asarray(correction_)
 
     return data
@@ -39,7 +39,7 @@ def data_reverse(y, T, N):
     @jax.jit
     @jax.vmap
     def data(key):
-        reverse_ = utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion).ys
+        reverse_ = utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion)
         # correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
         # correction_ = utils.solution_ode(
         #     ts, x0=jnp.asarray([1.0]), drift=correction_drift_

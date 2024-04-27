@@ -44,26 +44,42 @@ def backward(key, ts, y, score_fn, drift, diffusion):
 def solution(key, ts, x0, drift, diffusion, bm_shape=None):
     x0 = jnp.asarray(x0)
     assert x0.ndim == 1
-    if not bm_shape:
-        bm_shape = (x0.size,)
+
+    def step_fun(key_and_t_and_x, dt):
+        k, t, x = key_and_t_and_x
+        k, subkey = jax.random.split(k, num=2)
+        eps = jax.random.normal(subkey, shape=x.shape)
+
+        xnew = x + dt * drift(t, x) + jnp.sqrt(dt) * diffusion(t, x) @ eps
+        tnew = t + dt
+
+        return (k, tnew, xnew), xnew
+
+    init = (key, ts[0], x0)
+    _, x_all = jax.lax.scan(step_fun, xs=jnp.diff(ts), init=init)
+    return jnp.concatenate([x0[None], x_all], axis=0)
+
+    # if not bm_shape:
+    #     bm_shape = (x0.size,)
+
     # bm = diffrax.VirtualBrownianTree(
     #     ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=bm_shape, key=key
     # )
-    bm = diffrax.UnsafeBrownianPath(shape=bm_shape, key=key)
-    terms = diffrax.MultiTerm(diffrax.ODETerm(drift), diffrax.ControlTerm(diffusion, bm))
-    solver = diffrax.Euler()
-    saveat = diffrax.SaveAt(ts=ts)
-    sol = diffrax.diffeqsolve(
-        terms,
-        solver,
-        ts[0].astype(float),
-        ts[-1].astype(float),
-        dt0=0.01,
-        y0=x0,
-        saveat=saveat,
-        adjoint=diffrax.DirectAdjoint(),
-    )
-    return sol
+    # bm = diffrax.UnsafeBrownianPath(shape=bm_shape, key=key)
+    # terms = diffrax.MultiTerm(diffrax.ODETerm(drift), diffrax.ControlTerm(diffusion, bm))
+    # solver = diffrax.Euler()
+    # saveat = diffrax.SaveAt(ts=ts)
+    # sol = diffrax.diffeqsolve(
+    #     terms,
+    #     solver,
+    #     ts[0].astype(float),
+    #     ts[-1].astype(float),
+    #     dt0=0.01,
+    #     y0=x0,
+    #     saveat=saveat,
+    #     adjoint=diffrax.DirectAdjoint(),
+    # )
+    # return sol
 
 
 def important_reverse_and_correction(
