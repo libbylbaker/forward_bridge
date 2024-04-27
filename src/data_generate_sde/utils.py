@@ -59,28 +59,6 @@ def solution(key, ts, x0, drift, diffusion, bm_shape=None):
     _, x_all = jax.lax.scan(step_fun, xs=jnp.diff(ts), init=init)
     return jnp.concatenate([x0[None], x_all], axis=0)
 
-    # if not bm_shape:
-    #     bm_shape = (x0.size,)
-    #
-    # bm = diffrax.VirtualBrownianTree(
-    #     ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=bm_shape, key=key
-    # )
-    # # bm = diffrax.UnsafeBrownianPath(shape=bm_shape, key=key)
-    # terms = diffrax.MultiTerm(diffrax.ODETerm(drift), diffrax.ControlTerm(diffusion, bm))
-    # solver = diffrax.Euler()
-    # saveat = diffrax.SaveAt(ts=ts)
-    # sol = diffrax.diffeqsolve(
-    #     terms,
-    #     solver,
-    #     ts[0].astype(float),
-    #     ts[-1].astype(float),
-    #     dt0=0.01,
-    #     y0=x0,
-    #     saveat=saveat,
-    #     # adjoint=diffrax.DirectAdjoint(),
-    # ).ys
-    # return sol
-
 
 def important_reverse_and_correction(
     key, ts, x0, y, reverse_drift, reverse_diffusion, correction_drift
