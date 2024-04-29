@@ -16,12 +16,12 @@ from src.training import utils
 
 seed = 1
 
-sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (5.0,)}
+sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (20.0,)}
 dt = 0.01
 
 y = sde["y"]
 x0 = sde["x0"]
-checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/guided_data_y_{y}_d_x0_{x0}"
+checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/guided/guided_data_y_{y}_x0_{x0}"
 
 network = {
     "output_dim": sde["dim"],
@@ -33,10 +33,10 @@ network = {
 }
 
 training = {
-    "batch_size": 1000,
+    "batch_size": 100,
     "epochs_per_load": 1,
     "lr": 0.01,
-    "num_reloads": 1000,
+    "num_reloads": 100,
     "load_size": 1000,
 }
 

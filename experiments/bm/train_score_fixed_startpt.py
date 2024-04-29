@@ -30,7 +30,7 @@ training = {
     "batch_size": 1000,
     "epochs_per_load": 1,
     "lr": 5e-3,
-    "num_reloads": 1000,
+    "num_reloads": 300,
     "load_size": 1000,
 }
 

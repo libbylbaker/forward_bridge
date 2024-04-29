@@ -31,10 +31,10 @@ network = {
 }
 
 training = {
-    "batch_size": 1000,
+    "batch_size": 100,
     "epochs_per_load": 1,
     "lr": 0.01,
-    "num_reloads": 1000,
+    "num_reloads": 100,
     "load_size": 1000,
 }
 

@@ -57,10 +57,10 @@ def data_reverse_variable_y(T, N):
     @jax.jit
     @jax.vmap
     def data(key, y):
-        reverse_ = utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion).ys
-        correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
-        correction_ = utils.solution_ode(ts, x0=jnp.asarray([1.0]), drift=correction_drift_).ys
-        return ts[..., None], reverse_, jnp.asarray(correction_)[-1, 0], y
+        reverse_ = utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion)
+        # correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
+        # correction_ = utils.solution_ode(ts, x0=jnp.asarray([1.0]), drift=correction_drift_).ys
+        return ts[..., None], reverse_, jnp.asarray(1.0), y
 
     return data
 
@@ -81,7 +81,7 @@ def data_reverse_variable_y_guided(x0, T, N):
     @jax.jit
     @jax.vmap
     def data(key, y):
-        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion).ys
+        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion)
         correction_ = (1.0,)  # Need to work out what this should be (maybe just r.T?)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 
@@ -123,7 +123,7 @@ def data_reverse_guided(x0, y, T, N):
     @jax.jit
     @jax.vmap
     def data(key):
-        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion).ys
+        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion)
         correction_ = (1.0,)  # Need to work out what this should be (maybe just r.T?)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 

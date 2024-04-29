@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 
-def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max):
+def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max, cmap="viridis"):
     x = jnp.linspace(x_min, x_max, 100)
     y = jnp.linspace(y_min, y_max, 100)
     t = jnp.asarray([0.25, 0.5, 0.75])
@@ -17,7 +17,7 @@ def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max)
             jax.vmap(learned_score, in_axes=(None, 0, 0)), in_axes=(None, 0, 0)
         )
         score_pred = vectorised_learnt_score(ts, x, y)
-        pc = axs[0, col].pcolormesh(x.squeeze(), y.squeeze(), score_pred.squeeze())
+        pc = axs[0, col].pcolormesh(x.squeeze(), y.squeeze(), score_pred.squeeze(), cmap=cmap)
         axs[0, col].set_title(f"Time: {ts:.2f}")
 
     for col, ts in enumerate(t):
@@ -25,13 +25,15 @@ def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max)
             jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0)
         )
         score_true = vectorised_score(ts, x.squeeze(), 1.0, y.squeeze())
-        pc = axs[1, col].pcolormesh(x.squeeze(), y.squeeze(), score_true.squeeze())
+        pc = axs[1, col].pcolormesh(x.squeeze(), y.squeeze(), score_true.squeeze(), cmap=cmap)
     fig.colorbar(pc, ax=axs.ravel().tolist())
 
     return fig, axs
 
 
-def plot_score_error_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max):
+def plot_score_error_variable_y(
+    true_score, learned_score, x_min, x_max, y_min, y_max, cmap="viridis"
+):
     x = jnp.linspace(x_min, x_max, 100)
     y = jnp.linspace(y_min, y_max, 100)
     t = jnp.asarray([0.25, 0.5, 0.75])
@@ -49,14 +51,22 @@ def plot_score_error_variable_y(true_score, learned_score, x_min, x_max, y_min, 
             jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0)
         )
         score_true = vectorised_score(ts, x.squeeze(), 1.0, y.squeeze())
+        # mse = jnp.mean((score_pred.squeeze() - score_true.squeeze()) ** 2)
+        log_abs_error = jnp.log(
+            abs(score_pred.squeeze() - score_true.squeeze()) + jnp.finfo(score_pred.dtype).eps
+        )
         abs_error = abs(score_pred.squeeze() - score_true.squeeze())
-        eps = 1e-1
-        rel_error = abs_error / (abs(score_true.squeeze()) + eps)
+        # eps = 1e-1
+        # rel_error = abs_error / (abs(score_true.squeeze()) + eps)
 
-        pc = axs[col].pcolormesh(x.squeeze(), y.squeeze(), abs_error)
+        pc = axs[col].pcolormesh(x.squeeze(), y.squeeze(), abs_error, cmap=cmap)
         axs[col].set_title(f"Time: {ts:.2f}")
-    fig.colorbar(pc, ax=axs.ravel().tolist())
-    plt.show()
+        axs[col].set_xlabel(r"$x$")
+    axs[0].set_ylabel(r"$y$")
+    fig.colorbar(pc, ax=axs.ravel().tolist(), label="Absolute Error", aspect=5)
+    # fig.supxlabel(r"$x$ value")
+    # fig.supylabel(r"$y$ value")
+    return fig, axs
 
 
 def visualise_data(data):

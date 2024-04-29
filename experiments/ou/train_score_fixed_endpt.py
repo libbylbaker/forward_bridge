@@ -15,46 +15,69 @@ from src.training import utils
 
 seed = 1
 
-sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (0.0,)}
-dt = 0.01
 
-y = sde["y"]
-dim = sde["dim"]
-T = sde["T"]
-checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/fixed_y_{y}_d_{dim}_T_{T}"
+def main(key, n=1, T=1.0):
+    def plot_score(model, params):
+        trained_score = utils.trained_score(model, params)
+        _ = plotting.plot_score(
+            ou.score,
+            trained_score,
+            sde["T"],
+            sde["y"],
+            x=jnp.linspace(-3, 5, 1000)[..., None],
+            t=jnp.asarray([0.25, 0.5, 0.75]),
+        )
+        plt.show()
 
-network = {
-    "output_dim": sde["dim"],
-    "time_embedding_dim": 16,
-    "init_embedding_dim": 16,
-    "activation": "leaky_relu",
-    "encoder_layer_dims": [16],
-    "decoder_layer_dims": [128, 128],
-}
+    def _save(params, opt_state):
+        ckpt = {
+            "params": params,
+            "opt_state": opt_state,
+            "sde": sde,
+            "network": network,
+            "training": training,
+        }
+        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+        save_args = orbax_utils.save_args_from_target(ckpt)
+        orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-training = {
-    "batch_size": 1000,
-    "epochs_per_load": 1,
-    "lr": 0.01,
-    "num_reloads": 1000,
-    "load_size": 1000,
-}
+    sde = {"x0": (1.0,), "N": 100, "dim": n, "T": T, "y": (20.0,)}
+    dt = sde["T"] / sde["N"]
 
+    y = sde["y"]
+    x0 = sde["x0"]
+    dim = sde["dim"]
+    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/guided/fixed_x0_{x0}_y{y}"
 
-drift, diffusion = ou.vector_fields()
-data_fn = ou.data_reverse(sde["y"], sde["T"], sde["N"])
+    network = {
+        "output_dim": sde["dim"],
+        "time_embedding_dim": 16,
+        "init_embedding_dim": 16,
+        "activation": "leaky_relu",
+        "encoder_layer_dims": [16],
+        "decoder_layer_dims": [128, 128],
+    }
 
-model = ScoreMLP(**network)
-optimiser = optax.adam(learning_rate=training["lr"])
+    training = {
+        "batch_size": 100,
+        "epochs_per_load": 1,
+        "lr": 0.01,
+        "num_reloads": 100,
+        "load_size": 1000,
+    }
 
-score_fn = utils.get_score(drift=drift, diffusion=diffusion)
+    drift, diffusion = ou.vector_fields()
+    data_fn = ou.data_reverse(sde["y"], sde["T"], sde["N"])
 
-x_shape = jnp.empty(shape=(1, sde["dim"]))
-t_shape = jnp.empty(shape=(1, 1))
-model_init_sizes = (x_shape, t_shape)
+    model = ScoreMLP(**network)
+    optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
 
+    score_fn = utils.get_score(drift=drift, diffusion=diffusion)
 
-def main(key):
+    x_shape = jnp.empty(shape=(1, sde["dim"]))
+    t_shape = jnp.empty(shape=(1, 1))
+    model_init_sizes = (x_shape, t_shape)
+
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
@@ -92,32 +115,7 @@ def main(key):
             )
             if actual_epoch % 100 == 0 or last_epoch:
                 _save(params, opt_state)
-                plot_score(model, params)
-
-
-def plot_score(model, params):
-    trained_score = utils.trained_score(model, params)
-    _ = plotting.plot_forward_score(
-        ou.score_forward,
-        trained_score,
-        sde["x0"],
-        x=jnp.linspace(-2, 2, 1000)[..., None],
-        t=jnp.asarray([0.25, 0.5, 0.75]),
-    )
-    plt.show()
-
-
-def _save(params, opt_state):
-    ckpt = {
-        "params": params,
-        "opt_state": opt_state,
-        "sde": sde,
-        "network": network,
-        "training": training,
-    }
-    orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
-    save_args = orbax_utils.save_args_from_target(ckpt)
-    orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
+                # plot_score(model, params)
 
 
 if __name__ == "__main__":
