@@ -120,7 +120,7 @@ def solution_ode(ts, x0, drift):
         y0=x0,
         saveat=saveat,
     )
-    return sol
+    return sol.ys
 
 
 def solution_ode_dense(t0, t1, x0, drift):

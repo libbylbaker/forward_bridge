@@ -16,7 +16,7 @@ def data_forward(x0, T, N):
     @jax.vmap
     def data(key):
         correction_ = 1.0
-        forward_ = utils.solution(key, ts, x0=x0, drift=drift, diffusion=diffusion).ys
+        forward_ = utils.solution(key, ts, x0=x0, drift=drift, diffusion=diffusion)
         return ts[..., None], forward_, jnp.asarray(correction_)
 
     return data
@@ -37,7 +37,7 @@ def data_importance(x0, y, T, N):
         """
         reverse_and_correction_ = utils.important_reverse_and_correction(
             key, time_reverse, x0, y, drift, diffusion, correction_drift
-        ).ys
+        )
         reverse_ = reverse_and_correction_[:, :-1]
         correction_ = reverse_and_correction_[-1, -1]
         return ts[..., None], reverse_, jnp.asarray(correction_)
@@ -63,7 +63,7 @@ def data_reverse(y, T, N):
         start_val = jnp.append(y, 1.0)
         reverse_and_correction_ = utils.solution(
             key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion
-        ).ys
+        )
         reverse_ = reverse_and_correction_[:, :-1]
         correction_ = reverse_and_correction_[-1, -1]
         return ts[..., None], reverse_, jnp.asarray(correction_)
@@ -88,7 +88,7 @@ def data_reverse_guided(x0, y, T, N):
     @jax.jit
     @jax.vmap
     def data(key):
-        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion).ys
+        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion)
         correction_ = (1.0,)  # Need to work out what this should be (maybe just r.T?)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 
@@ -121,16 +121,16 @@ def vector_fields_reverse():
 
 def vector_fields_reverse_and_correction():
     def drift(t, x, *args):
-        reverse_drift, _ = vector_fields_reverse()
         assert x.ndim == 1
+        reverse_drift, _ = vector_fields_reverse()
         reverse = reverse_drift(t, x[:-1])
         correct = correction_drift(t, x[:-1], x[-1, None])
         return jnp.concatenate([reverse, correct])
 
     def diffusion(t, x, *args):
         assert x.ndim == 1
-        _, rev_diff = vector_fields_reverse()
-        rev_diffusion = rev_diff(t, x[:-1])
+        _, reverse_diffusion = vector_fields_reverse()
+        rev_diffusion = reverse_diffusion(t, x[:-1])
         rev_corr_diff = jnp.pad(
             rev_diffusion, ((0, 1), (0, 1)), mode="constant", constant_values=0.0
         )
