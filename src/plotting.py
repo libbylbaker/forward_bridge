@@ -76,6 +76,29 @@ def plot_forward_score(
     return fig, axs
 
 
+def plot_score_2d(learned_score, t=jnp.asarray([0.0, 1.0, 2.0])):
+    x = jnp.linspace(0, 4, 100)
+    y = jnp.linspace(0, 2, 100)
+    x, y = jnp.meshgrid(x, y)
+    x = x[..., None]
+    y = y[..., None]
+
+    fig, axs = plt.subplots(nrows=2, ncols=t.size, sharey=True)
+    for col, ts in enumerate(t):
+
+        def vectorised_score(ts, x, y):
+            xy = jnp.concatenate([x, y], axis=-1)
+            return jax.vmap(jax.vmap(learned_score, in_axes=(None, 0)), in_axes=(None, 0))(ts, xy)
+
+        score_pred = vectorised_score(ts, x, y)
+        pc = axs[0, col].pcolormesh(x.squeeze(), y.squeeze(), score_pred[:, :, 0])
+        pc1 = axs[1, col].pcolormesh(x.squeeze(), y.squeeze(), score_pred[:, :, 1])
+        fig.colorbar(pc, ax=axs[0, col])
+        fig.colorbar(pc1, ax=axs[1, col])
+        axs[0, col].set_title(f"Time: {ts:.2f}")
+    plt.show()
+
+
 def plot_score_variable_y(true_score, learned_score, epoch):
     x = jnp.linspace(2, 6, 100)
     y = jnp.linspace(0, 4, 100)
