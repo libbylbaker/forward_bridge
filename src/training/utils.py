@@ -3,21 +3,7 @@ from typing import Callable
 
 import jax
 import optax
-from flax.training.train_state import TrainState
 from jax import numpy as jnp
-
-
-def create_train_state(net, key, learning_rate, *model_args):
-    """Creates an initial `TrainState`."""
-    # x = jnp.empty(shape=x_shape)
-    # t = jnp.empty(shape=t_shape)
-    variables = net.init(key, *model_args, train=False)
-    tx = optax.adam(learning_rate)
-    return TrainState.create(
-        apply_fn=net.apply,
-        params=variables["params"],
-        tx=tx,
-    )
 
 
 def trained_score(model, params) -> Callable:
@@ -37,13 +23,6 @@ def trained_score_variable_y(model, params) -> Callable:
         assert _t.ndim == 0
         assert _x.ndim == 1
         _y = jnp.asarray(_y)
-        # result = state.apply_fn(
-        #     {"params": state.params},
-        #     x=_x[None, ...],
-        #     y=_y[None, ...],
-        #     t=jnp.asarray([_t]),
-        #     train=False,
-        # )
         result = model.apply(params, _x[None, ...], _y[None, ...], jnp.asarray([_t]), train=False)
         return result.flatten()
 
@@ -79,8 +58,8 @@ def create_train_step_variable_y(key, model, optimiser, *model_init_sizes, dt, s
 
         def loss_fn(params_):
             prediction = model.apply(params_, traj, y, t, train=True)
-            # loss = dt * jnp.mean(jnp.square(true_score - prediction)*correction)
-            loss = dt * jnp.mean(jnp.square(true_score - prediction))
+            loss = dt * jnp.mean(jnp.square(true_score - prediction) * correction)
+            # loss = dt * jnp.mean(jnp.square(true_score - prediction))
             return loss
 
         grad_fn = jax.value_and_grad(loss_fn)
@@ -102,8 +81,8 @@ def _create_train_step(key, model, optimiser, *model_init_sizes, dt, score, data
 
         def loss_fn(params_):
             prediction = model.apply(params_, traj, t, train=True)
-            # loss = dt * jnp.mean(jnp.square(true_score - prediction)*correction)
-            loss = dt * jnp.mean(jnp.square(true_score - prediction))
+            loss = dt * jnp.mean(jnp.square(true_score - prediction) * correction)
+            # loss = dt * jnp.mean(jnp.square(true_score - prediction))
             return loss
 
         grad_fn = jax.value_and_grad(loss_fn)
@@ -113,28 +92,6 @@ def _create_train_step(key, model, optimiser, *model_init_sizes, dt, score, data
         return params, opt_state, _loss
 
     return train_step, init_params, init_opt_state
-
-
-# def create_train_step(key, model, optimiser, *model_init_sizes, dt) -> (Callable, TrainState):
-#     init_params = model.init(key, *model_init_sizes, train=True)
-#     init_opt_state = optimiser.init(init_params)
-#     # init_state = TrainState.create(apply_fn=model.apply, params=variables["params"], tx=optimiser)
-#
-#     @jax.jit
-#     def train_step(params, opt_state, times, trajectory, correction, true_score):
-#         def loss_fn(params_):
-#             prediction = model.apply(params_, trajectory, times, train=True)
-#             # loss = dt * jnp.mean(jnp.square(true_score - prediction)*correction)
-#             loss = dt * jnp.mean(jnp.square(true_score - prediction))
-#             return loss
-#
-#         grad_fn = jax.value_and_grad(loss_fn)
-#         _loss, grads = grad_fn(params)
-#         updates, opt_state = optimiser.update(grads, opt_state, params)
-#         params = optax.apply_updates(params, updates)
-#         return params, opt_state, _loss
-#
-#     return train_step, init_params, init_opt_state
 
 
 @partial(jax.jit, static_argnames=["score"])
@@ -193,13 +150,13 @@ def _data_setup_forward(times, trajectory, correction, score):
     batched_score = jax.vmap(time_step_score, in_axes=(0, 0, 0, 0))
     true_score = -batched_score(t, traj, t_plus1, traj_plus1)
 
-    # correction = jnp.repeat(correction, trajectory.shape[0])
+    correction = jnp.repeat(correction, traj.shape[0])
 
     traj_plus1 = traj_plus1.reshape(-1, traj.shape[-1])
     t_plus1 = t_plus1.reshape(-1, t.shape[-1])
     true_score = true_score.reshape(-1, traj.shape[-1])
 
-    return t_plus1, traj_plus1, correction, true_score
+    return t_plus1, traj_plus1, 1.0, true_score
 
 
 def get_score(drift, diffusion) -> Callable:
