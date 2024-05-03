@@ -2,6 +2,22 @@ import diffrax
 import jax
 import jax.numpy as jnp
 
+from src.data_generate_sde import time
+
+
+def data_forward(x0, T, N, vector_fields):
+    ts = time.grid(t_start=0, T=T, N=N)
+    drift, diffusion = vector_fields
+
+    @jax.jit
+    @jax.vmap
+    def data(key):
+        correction_ = 1.0
+        forward_ = solution(key, ts, x0, drift, diffusion)
+        return ts[..., None], forward_, jnp.asarray(correction_)
+
+    return data
+
 
 def conditioned(key, ts, x0, score_fn, drift, diffusion):
     x0 = jnp.asarray(x0)

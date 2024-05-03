@@ -12,17 +12,7 @@ _SIGMA = 1.0
 
 
 def data_forward(x0, T, N):
-    ts = time.grid(t_start=0, T=T, N=N)
-    drift, diffusion = vector_fields()
-
-    @jax.jit
-    @jax.vmap
-    def data(key):
-        correction_ = 1.0
-        forward_ = utils.solution(key, ts, x0, drift, diffusion)
-        return ts[..., None], forward_, jnp.asarray(correction_)
-
-    return data
+    return utils.data_forward(x0, T, N, vector_fields())
 
 
 def data_reverse(y, T, N):
@@ -39,11 +29,9 @@ def data_reverse(y, T, N):
     @jax.vmap
     def data(key):
         reverse_ = utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion)
-        # correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
-        # correction_ = utils.solution_ode(
-        #     ts, x0=jnp.asarray([1.0]), drift=correction_drift_
-        # ).ys
-        return ts[..., None], reverse_, jnp.asarray(1.0)
+        correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
+        correction_ = utils.solution_ode(ts, x0=jnp.asarray([1.0]), drift=correction_drift_)
+        return ts[..., None], reverse_, correction_[-1, -1]
 
     return data
 

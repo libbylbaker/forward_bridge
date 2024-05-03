@@ -5,6 +5,10 @@ import jax.numpy as jnp
 from doobs_score_matching.src.data_generate_sde import time, utils
 
 
+def data_forward(x0, T, N):
+    return utils.data_forward(x0, T, N, vector_fields())
+
+
 def data_reverse(y, T, N):
     """
     :return: ts,
@@ -18,23 +22,9 @@ def data_reverse(y, T, N):
     @jax.jit
     @jax.vmap
     def data(key):
-        _reverse = utils.solution(key, ts, time_reverse, drift, diffusion)
+        _reverse = utils.solution(key, ts, y, drift, diffusion)
         _correction = 1.0
         return ts[..., None], _reverse, jnp.asarray(_correction)
-
-    return data
-
-
-def data_forward(x0, T, N):
-    ts = time.grid(t_start=0, T=T, N=N)
-    drift, diffusion = vector_fields()
-
-    @jax.jit
-    @jax.vmap
-    def data(key):
-        _correction = 1.0
-        _forward = utils.solution(key, ts, x0, drift, diffusion)
-        return ts[..., None], _forward, jnp.asarray(_correction)
 
     return data
 

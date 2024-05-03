@@ -9,17 +9,7 @@ sigma = 0.1
 
 
 def data_forward(x0, T, N):
-    ts = time.grid(t_start=0, T=T, N=N)
-    drift, diffusion = vector_fields()
-
-    @jax.jit
-    @jax.vmap
-    def data(key):
-        correction_ = 1.0
-        forward_ = utils.solution(key, ts, x0, drift, diffusion)
-        return ts[..., None], forward_, jnp.asarray(correction_)
-
-    return data
+    return utils.data_forward(x0, T, N, vector_fields())
 
 
 def data_reverse(y, T, N, weight_fn=None):
