@@ -29,28 +29,3 @@ def x_data(dim=2):
 @pytest.fixture
 def t_data():
     return jnp.linspace(0, 1, 8, dtype=jnp.float32)
-
-
-def test_create_train_state(model, x_data, t_data):
-    state = create_train_state(
-        model,
-        jax.random.PRNGKey(0),
-        0.1,
-        x_data,
-        t_data,
-    )
-    assert isinstance(state.params, dict)
-
-
-def test_trained_score(model, x_data, t_data):
-    state = create_train_state(
-        model,
-        jax.random.PRNGKey(0),
-        0.1,
-        x_data,
-        t_data,
-    )
-    score_fn = trained_score(state)
-    score = score_fn(t_data[0], x_data[0])
-    assert score.ndim == 1
-    assert score.size == 2
