@@ -4,7 +4,7 @@ import jax.random
 import pytest
 from flax.training.train_state import TrainState
 
-from src.training.utils import create_train_state, trained_score
+from src.training.utils import trained_score
 
 
 class Model(nn.Module):
