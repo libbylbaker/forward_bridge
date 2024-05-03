@@ -13,11 +13,12 @@ def data_reverse(y, T, N):
     """
     ts = time.grid(t_start=0, T=T, N=N)
     time_reverse = time.reverse(T=T, times=ts)
+    drift, diffusion = vector_fields()
 
     @jax.jit
     @jax.vmap
     def data(key):
-        _reverse = forward(key, time_reverse, x0=y)
+        _reverse = utils.solution(key, ts, time_reverse, drift, diffusion)
         _correction = 1.0
         return ts[..., None], _reverse, jnp.asarray(_correction)
 
@@ -26,29 +27,16 @@ def data_reverse(y, T, N):
 
 def data_forward(x0, T, N):
     ts = time.grid(t_start=0, T=T, N=N)
+    drift, diffusion = vector_fields()
 
     @jax.jit
     @jax.vmap
     def data(key):
         _correction = 1.0
-        _forward = forward(key, ts, x0=x0)
+        _forward = utils.solution(key, ts, x0, drift, diffusion)
         return ts[..., None], _forward, jnp.asarray(_correction)
 
     return data
-
-
-def forward(key, ts, x0):
-    x0 = jnp.asarray(x0)
-    assert x0.ndim == 1
-    dim = x0.size
-    # bm = diffrax.VirtualBrownianTree(
-    #     ts[0].astype(float), ts[-1].astype(float), tol=1e-3, shape=(dim,), key=key
-    # )
-    # bm = diffrax.UnsafeBrownianPath(shape=(dim,), key=key)
-    drift, diffusion = vector_fields()
-    bm = utils.solution(key, ts, x0, drift, diffusion)
-    # return jax.vmap(bm.evaluate, in_axes=(0,))(ts)
-    return bm
 
 
 def vector_fields():
