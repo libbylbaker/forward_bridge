@@ -1,14 +1,10 @@
-import flax.linen as nn
 import jax.numpy as jnp
-import jax.random
 import jax.random as jr
-import matplotlib.pyplot as plt
 import optax
 import orbax
 from flax.training import orbax_utils
 
-from src import plotting
-from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
+from src.data_generate_sde import sde_cell_model
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
 from src.training import utils
@@ -29,7 +25,7 @@ def main(key, n=2, T=2.0):
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-    sde = {"x0": [0.1, 0.1], "N": 400, "dim": n, "T": T, "y": [1.5, 0.5]}
+    sde = {"x0": [0.1, 0.1], "N": 100, "dim": n, "T": T, "y": [2.0, 0.3]}
     dt = sde["T"] / sde["N"]
 
     y = sde["y"]
@@ -54,8 +50,9 @@ def main(key, n=2, T=2.0):
         "load_size": 1000,
     }
 
-    drift, diffusion = ou.vector_fields()
-    data_fn = ou.data_reverse(sde["y"], sde["T"], sde["N"])
+    # weight_fn = sde_cell_model.weight_function_gaussian(x0, 1.)
+    drift, diffusion = sde_cell_model.vector_fields()
+    data_fn = sde_cell_model.data_reverse(sde["y"], sde["T"], sde["N"])
 
     model = ScoreMLP(**network)
     optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))

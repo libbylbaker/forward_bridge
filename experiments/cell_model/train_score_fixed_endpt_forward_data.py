@@ -31,7 +31,7 @@ def main(key, n=2, T=2.0):
     y = sde["y"]
     x0 = sde["x0"]
     dim = sde["dim"]
-    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/cell/fixed_x0_{x0}_y_{y}_guided_weights"
+    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/cell/fixed_y_{y}_T_{T}_forward_data"
 
     network = {
         "output_dim": sde["dim"],
@@ -46,15 +46,13 @@ def main(key, n=2, T=2.0):
         "batch_size": 100,
         "epochs_per_load": 1,
         "lr": 0.01,
-        "num_reloads": 1000,
+        "num_reloads": 100,
         "load_size": 1000,
     }
 
+    # weight_fn = sde_cell_model.weight_function_gaussian(x0, 1.)
     drift, diffusion = sde_cell_model.vector_fields()
-    weight_fn = sde_cell_model.weight_function_gaussian(sde["x0"], 1)
-    data_fn = sde_cell_model.data_reverse_guided(
-        sde["x0"], sde["y"], sde["T"], sde["N"], weight_fn
-    )
+    data_fn = sde_cell_model.data_forward(sde["y"], sde["T"], sde["N"])
 
     model = ScoreMLP(**network)
     optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
