@@ -41,13 +41,13 @@ def main(key, n=1, T=1.0):
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-    sde = {"x0": (1.0,), "N": 100, "dim": n, "T": T, "y": (20.0,)}
+    sde = {"x0": (1.0,), "N": 100, "dim": n, "T": T, "y": (1.0,)}
     dt = sde["T"] / sde["N"]
 
     y = sde["y"]
     x0 = sde["x0"]
     dim = sde["dim"]
-    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/guided/fixed_x0_{x0}_y{y}"
+    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/fixed_y{y}_10_reloads"
 
     network = {
         "output_dim": sde["dim"],
@@ -62,7 +62,7 @@ def main(key, n=1, T=1.0):
         "batch_size": 100,
         "epochs_per_load": 1,
         "lr": 0.01,
-        "num_reloads": 100,
+        "num_reloads": 10,
         "load_size": 1000,
     }
 

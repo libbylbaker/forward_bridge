@@ -12,7 +12,7 @@ from src.training import utils
 seed = 1
 
 
-def main(key, n=2, T=2.0):
+def main(key, n=2, T=8.0):
     def _save(params, opt_state):
         ckpt = {
             "params": params,
