@@ -94,5 +94,7 @@ def get_activation(activation: str):
         return nn.tanh
     elif activation == "sigmoid":
         return nn.sigmoid
+    elif activation == "gelu":
+        return nn.gelu
     else:
         raise ValueError(f"Activation {activation} not supported")

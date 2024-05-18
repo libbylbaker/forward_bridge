@@ -4,7 +4,7 @@ import optax
 import orbax
 from flax.training import orbax_utils
 
-from src.data_generate_sde import sde_cell_model
+from src.data_generate_sde import sde_kunita
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
 from src.training import train_utils
@@ -12,7 +12,7 @@ from src.training import train_utils
 seed = 1
 
 
-def main(key, n=2, T=3.0):
+def main(key, T=1.0):
     def _save(params, opt_state):
         ckpt = {
             "params": params,
@@ -25,36 +25,44 @@ def main(key, n=2, T=3.0):
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-    sde = {"x0": [0.1, 0.1], "N": 600, "dim": n, "T": T, "y": [1.8, 0.2]}
+    num_landmarks = 2
+
+    def sample_circle(num_landmarks: int, radius=1.0, centre=jnp.asarray([0, 0])) -> jnp.ndarray:
+        theta = jnp.linspace(0, 2 * jnp.pi, num_landmarks, endpoint=False)
+        x = jnp.cos(theta)
+        y = jnp.sin(theta)
+        return (radius * jnp.stack([x, y], axis=1) + centre).flatten()
+
+    x0 = sample_circle(num_landmarks)
+
+    sde = {"x0": x0, "N": 100, "dim": x0.size, "T": T}
     dt = sde["T"] / sde["N"]
 
-    y = sde["y"]
-    N = sde["N"]
-    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/cell/fixed_y_{y}_T_{T}_N_{N}"
+    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/kunita/fixed_x0_lms_{num_landmarks}"
 
     network = {
         "output_dim": sde["dim"],
-        "time_embedding_dim": 16,
-        "init_embedding_dim": 16,
-        "activation": "leaky_relu",
-        "encoder_layer_dims": [16],
-        "decoder_layer_dims": [128, 128],
+        "time_embedding_dim": 64,
+        "init_embedding_dim": 32,
+        "activation": "gelu",
+        "encoder_layer_dims": [64, 32, 32],
+        "decoder_layer_dims": [32, 32, 32],
     }
 
     training = {
-        "batch_size": 1000,
+        "batch_size": 64,
         "epochs_per_load": 1,
         "lr": 0.01,
-        "num_reloads": 1000,
-        "load_size": 1000,
+        "num_reloads": 50,
+        "load_size": 64 * 50,
     }
 
     # weight_fn = sde_cell_model.weight_function_gaussian(x0, 1.)
-    drift, diffusion = sde_cell_model.vector_fields()
-    data_fn = sde_cell_model.data_reverse(sde["y"], sde["T"], sde["N"])
+    drift, diffusion = sde_kunita.vector_fields()
+    data_fn = sde_kunita.data_forward(sde["x0"], sde["T"], sde["N"])
 
     model = ScoreMLP(**network)
-    optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
+    optimiser = optax.adam(learning_rate=training["lr"])
 
     score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
 
@@ -65,7 +73,7 @@ def main(key, n=2, T=3.0):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
-    train_step, params, opt_state = train_utils.create_train_step_reverse(
+    train_step, params, opt_state = train_utils.create_train_step_forward(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 

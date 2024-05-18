@@ -4,7 +4,7 @@ import optax
 import orbax
 from flax.training import orbax_utils
 
-from src.data_generate_sde import sde_cell_model
+from src.data_generate_sde import sde_langevin_landmarks
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
 from src.training import train_utils
@@ -12,7 +12,7 @@ from src.training import train_utils
 seed = 1
 
 
-def main(key, n=2, T=3.0):
+def main(key, n=2, T=1.0):
     def _save(params, opt_state):
         ckpt = {
             "params": params,
@@ -25,12 +25,18 @@ def main(key, n=2, T=3.0):
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-    sde = {"x0": [0.1, 0.1], "N": 600, "dim": n, "T": T, "y": [1.8, 0.2]}
+    num_landmarks = 5
+
+    p0 = jnp.ones(shape=(num_landmarks, 2))
+    q0_x = jnp.linspace(0, 5, num_landmarks)
+    q0_y = jnp.zeros(num_landmarks)
+    q0 = jnp.stack([q0_x, q0_y], axis=1)
+    y = jnp.stack([p0, q0], axis=0)
+
+    sde = {"x0": [0.1, 0.1], "N": 600, "dim": n, "T": T, "y": y}
     dt = sde["T"] / sde["N"]
 
-    y = sde["y"]
-    N = sde["N"]
-    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/cell/fixed_y_{y}_T_{T}_N_{N}"
+    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/cell/fixed_y_{num_landmarks}"
 
     network = {
         "output_dim": sde["dim"],
@@ -50,15 +56,15 @@ def main(key, n=2, T=3.0):
     }
 
     # weight_fn = sde_cell_model.weight_function_gaussian(x0, 1.)
-    drift, diffusion = sde_cell_model.vector_fields()
-    data_fn = sde_cell_model.data_reverse(sde["y"], sde["T"], sde["N"])
+    drift, diffusion = sde_langevin_landmarks.vector_fields()
+    data_fn = sde_langevin_landmarks.data_reverse(sde["y"], sde["T"], sde["N"])
 
     model = ScoreMLP(**network)
-    optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
+    optimiser = optax.adam(learning_rate=training["lr"])
 
     score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
 
-    x_shape = jnp.empty(shape=(1, sde["dim"]))
+    x_shape = jnp.empty(shape=(1, *y.shape))
     t_shape = jnp.empty(shape=(1, 1))
     model_init_sizes = (x_shape, t_shape)
 

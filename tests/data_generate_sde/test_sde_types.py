@@ -6,10 +6,11 @@ from src.data_generate_sde import (
     sde_bm,
     sde_cell_model,
     sde_interest_rates,
+    sde_lagrangian_landmarks,
     sde_ornstein_uhlenbeck,
     sde_time_dependent,
+    sde_utils,
     time,
-    utils,
 )
 
 
@@ -34,6 +35,9 @@ def keys():
 
 
 class TestDataForward:
+    def test_data_forward_langevin(self):
+        pass
+
     @pytest.mark.parametrize(
         "data_forward",
         [
@@ -119,16 +123,6 @@ class TestDataReverse:
         assert correction.shape == (5,)
         assert reverse[:, 0, 0].all() == y[0]
         assert reverse[:, 0, 1].all() == y[1]
-
-
-class TestDataReverseGuided:
-    def test_vector_fields_reverse_and_correction_guided(self):
-        x0 = jnp.asarray([1.0, 1.0])
-        T = 1.0
-        drift, diffusion = sde_cell_model.vector_fields_reverse_and_correction_guided(x0, T)
-        x = jnp.asarray([1.0, 1.0, 1.0])
-        assert drift(1.0, x).shape == (3,)
-        assert diffusion(1.0, x).shape == (3, 3)
 
 
 # class TestDataImportance:

@@ -1,7 +1,7 @@
 import jax.numpy
 import jax.numpy as jnp
 
-from src.data_generate_sde import guided_process, time, utils
+from src.data_generate_sde import guided_process, sde_utils, time
 
 C = 1
 
@@ -14,7 +14,7 @@ def data_forward(x0, T, N):
     @jax.vmap
     def data(key):
         correction_ = 1.0
-        forward_ = utils.solution(key, ts, x0=x0, drift=drift, diffusion=diffusion)
+        forward_ = sde_utils.solution(key, ts, x0=x0, drift=drift, diffusion=diffusion)
         return ts[..., None], forward_, jnp.asarray(correction_)
 
     return data
@@ -33,7 +33,7 @@ def data_importance(x0, y, T, N):
         reverse process: (t, dim), where t is the number of time steps and dim the dimension of the SDE
         correction process: float, correction process at time T
         """
-        reverse_and_correction_ = utils.important_reverse_and_correction(
+        reverse_and_correction_ = sde_utils.important_reverse_and_correction(
             key, time_reverse, x0, y, drift, diffusion, correction_drift
         )
         reverse_ = reverse_and_correction_[:, :-1]
@@ -59,7 +59,7 @@ def data_reverse(y, T, N):
         correction process: float, correction process at time T
         """
         start_val = jnp.append(y, 1.0)
-        reverse_and_correction_ = utils.solution(
+        reverse_and_correction_ = sde_utils.solution(
             key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion
         )
         reverse_ = reverse_and_correction_[:, :-1]
@@ -86,7 +86,7 @@ def data_reverse_guided(x0, y, T, N):
     @jax.jit
     @jax.vmap
     def data(key):
-        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion)
+        reverse_ = sde_utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion)
         correction_ = (1.0,)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 

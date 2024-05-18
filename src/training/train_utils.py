@@ -81,8 +81,8 @@ def _create_train_step(key, model, optimiser, *model_init_sizes, dt, score, data
 
         def loss_fn(params_):
             prediction = model.apply(params_, traj, t, train=True)
-            loss = dt * jnp.mean(jnp.square(true_score - prediction) * correction)
-            # loss = dt * jnp.mean(jnp.square(true_score - prediction))
+            loss = 0.5 * dt * jnp.mean(jnp.square(true_score - prediction) * correction)
+            # loss = 0.5 * dt * jnp.mean(jnp.square(true_score - prediction))
             return loss
 
         grad_fn = jax.value_and_grad(loss_fn)
@@ -149,8 +149,6 @@ def _data_setup_forward(times, trajectory, correction, score):
     time_step_score = jax.vmap(score, in_axes=(0, 0, 0, 0))
     batched_score = jax.vmap(time_step_score, in_axes=(0, 0, 0, 0))
     true_score = -batched_score(t, traj, t_plus1, traj_plus1)
-
-    correction = jnp.repeat(correction, traj.shape[0])
 
     traj_plus1 = traj_plus1.reshape(-1, traj.shape[-1])
     t_plus1 = t_plus1.reshape(-1, t.shape[-1])

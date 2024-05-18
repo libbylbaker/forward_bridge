@@ -2,10 +2,10 @@ import diffrax
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import time
+from src.data_generate_sde import guided_process, time
 
 
-def data_forward(x0, T, N, vector_fields):
+def data_forward(x0, T, N, vector_fields, bm_shape=None):
     ts = time.grid(t_start=0, T=T, N=N)
     drift, diffusion = vector_fields
 
@@ -13,10 +13,111 @@ def data_forward(x0, T, N, vector_fields):
     @jax.vmap
     def data(key):
         correction_ = 1.0
-        forward_ = solution(key, ts, x0, drift, diffusion)
+        forward_ = solution(key, ts, x0, drift, diffusion, bm_shape=bm_shape)
         return ts[..., None], forward_, jnp.asarray(correction_)
 
     return data
+
+
+def data_reverse(y, T, N, vector_fields_reverse_and_correction, weight_fn=None):
+    ts = time.grid(t_start=0, T=T, N=N)
+    ts_reverse = time.reverse(T=T, times=ts)
+    y = jnp.asarray(y)
+    assert y.ndim == 1
+    drift, diffusion = vector_fields_reverse_and_correction
+
+    @jax.jit
+    @jax.vmap
+    def data(key):
+        """
+        :return: ts,
+        reverse process: (t, dim), where t is the number of time steps and dim the dimension of the SDE
+        correction process: float, correction process at time T
+        """
+        start_val = jnp.append(y, 1.0)
+        reverse_and_correction_ = solution(
+            key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion
+        )
+        reverse_ = reverse_and_correction_[:, :-1]
+        correction_ = reverse_and_correction_[-1, -1]
+        return ts[..., None], reverse_, correction_
+
+    return data
+
+
+def data_reverse_weighted(y, T, N, vector_fields_reverse_and_correction, weight_fn):
+    unweighted_data = data_reverse(y, T, N, vector_fields_reverse_and_correction)
+
+    @jax.jit
+    @jax.vmap
+    def data(key):
+        ts, reverse_, unweighted_correction = unweighted_data(key)
+        weight = weight_fn(reverse_[-1])
+        return ts, reverse_, unweighted_correction * weight
+
+    return data
+
+
+def data_reverse_guided(x0, y, T, N, vector_fields_reverse_and_correction_guided):
+    x0 = jnp.asarray(x0)
+    y = jnp.asarray(y)
+    ts = time.grid(t_start=0, T=T, N=N)
+    ts_reverse = time.reverse(T, ts)
+    start_val = jnp.append(y, 1.0)
+
+    guided_drift, guided_diffusion = vector_fields_reverse_and_correction_guided
+
+    @jax.jit
+    @jax.vmap
+    def data(key):
+        reverse_and_correction = solution(
+            key, ts_reverse, start_val, guided_drift, guided_diffusion, y.shape
+        )
+        reverse = reverse_and_correction[:, :-1]
+        correction = reverse_and_correction[:, -1]
+        return ts[..., None], reverse, correction
+
+    return data
+
+
+def weight_function_gaussian(x0, inverse_covariance):
+    x0 = jnp.asarray(x0)
+
+    def gaussian_distance(YT):
+        YT = jnp.asarray(YT)
+        return jnp.exp(-0.5 * (YT - x0).T @ jnp.linalg.solve(inverse_covariance, (YT - x0)))
+
+    return gaussian_distance
+
+
+def vector_fields_reverse_and_correction_guided(
+    x0, T, vector_fields_reverse, drift_correction, reverse_guided_auxiliary
+):
+    reverse_drift, reverse_diffusion = vector_fields_reverse
+    B_auxiliary, beta_auxiliary, sigma_auxiliary = reverse_guided_auxiliary
+    guide_fn = guided_process.get_guide_fn(
+        0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary
+    )
+    guided_drift, _ = guided_process.vector_fields_guided(
+        reverse_drift, reverse_diffusion, guide_fn
+    )
+
+    def drift(t, x):
+        reverse = x[:-1]
+        correction = x[-1, None]
+        d_reverse = guided_drift(t, reverse)
+        d_correction = drift_correction(t, reverse, correction)
+        return jnp.concatenate([d_reverse, d_correction])
+
+    def diffusion(t, x):
+        reverse = x[:-1]
+        correction = x[-1]
+        d_reverse = reverse_diffusion(t, reverse)
+        d_correction = -guide_fn(t, reverse).T @ reverse_diffusion(t, reverse) * correction
+        diff = jnp.vstack((d_reverse, d_correction))
+        return diff
+
+    return drift, diffusion
 
 
 def conditioned(key, ts, x0, score_fn, drift, diffusion):
@@ -59,14 +160,15 @@ def backward(key, ts, y, score_fn, drift, diffusion):
 
 def solution(key, ts, x0, drift, diffusion, bm_shape=None):
     x0 = jnp.asarray(x0)
-    assert x0.ndim == 1
+    if bm_shape is None:
+        bm_shape = x0.shape
 
     def step_fun(key_and_t_and_x, dt):
         k, t, x = key_and_t_and_x
         k, subkey = jax.random.split(k, num=2)
-        eps = jax.random.normal(subkey, shape=x.shape)
-
-        xnew = x + dt * drift(t, x) + jnp.sqrt(dt) * diffusion(t, x) @ eps
+        eps = jax.random.normal(subkey, shape=bm_shape)
+        diffusion_ = diffusion(t, x)
+        xnew = x + dt * drift(t, x) + jnp.sqrt(dt) * diffusion_ @ eps
         tnew = t + dt
 
         return (k, tnew, xnew), xnew

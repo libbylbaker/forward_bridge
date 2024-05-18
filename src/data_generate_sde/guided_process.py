@@ -4,7 +4,7 @@ import diffrax
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import utils
+from src.data_generate_sde import sde_utils
 
 
 def vector_fields_guided(drift, diffusion, guide_fn):
@@ -62,6 +62,6 @@ def _backward_ode(
         d_x = -dL, -dM, -d_mu
         return d_x
 
-    sol_rev = utils.solution_ode_dense(t0, T, x0, drift_backward_ode_system)
+    sol_rev = sde_utils.solution_ode_dense(t0, T, x0, drift_backward_ode_system)
     sol_L_M_mu = lambda t: sol_rev.evaluate(T - t)
     return sol_L_M_mu

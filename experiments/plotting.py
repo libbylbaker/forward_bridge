@@ -1,6 +1,20 @@
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import orbax.checkpoint
+
+import src.models
+from src.training import utils
+
+
+def restore_checkpoint_ScoreMLP(checkpoint_path):
+    orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+    restored = orbax_checkpointer.restore(checkpoint_path)
+    model = src.models.score_mlp.ScoreMLP(**restored["network"])
+    params = restored["params"]
+    trained_score = utils.trained_score(model, params)
+    sde = restored["sde"]
+    return trained_score, sde
 
 
 def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max, cmap="viridis"):

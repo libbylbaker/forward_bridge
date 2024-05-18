@@ -11,14 +11,14 @@ from src import plotting
 from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
-from src.training import utils
+from src.training import train_utils
 
 seed = 1
 
 
 def main(key, n=1, T=1.0):
     def plot_score(model, params):
-        trained_score = utils.trained_score(model, params)
+        trained_score = train_utils.trained_score(model, params)
         _ = plotting.plot_score(
             ou.score,
             trained_score,
@@ -41,7 +41,7 @@ def main(key, n=1, T=1.0):
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-    sde = {"x0": (1.0,), "N": 100, "dim": n, "T": T, "y": (1.0,)}
+    sde = {"x0": (1.0,), "N": 100, "dim": n, "T": T, "y": jnp.ones((4,))}
     dt = sde["T"] / sde["N"]
 
     y = sde["y"]
@@ -72,7 +72,7 @@ def main(key, n=1, T=1.0):
     model = ScoreMLP(**network)
     optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
 
-    score_fn = utils.get_score(drift=drift, diffusion=diffusion)
+    score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
 
     x_shape = jnp.empty(shape=(1, sde["dim"]))
     t_shape = jnp.empty(shape=(1, 1))
@@ -81,7 +81,7 @@ def main(key, n=1, T=1.0):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
-    train_step, params, opt_state = utils.create_train_step_reverse(
+    train_step, params, opt_state = train_utils.create_train_step_reverse(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 

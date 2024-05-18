@@ -2,14 +2,14 @@ import jax.numpy
 import jax.numpy as jnp
 from jax.scipy.special import i1
 
-from src.data_generate_sde import guided_process, time, utils
+from src.data_generate_sde import guided_process, sde_utils, time
 
 # set to 1.5 so that we can use the bessel functions of order 1 in jax.scipy.special, when computing the true score
 _A = 1.5
 
 
 def data_forward(x0, T, N):
-    return utils.data_forward(x0, T, N, vector_fields())
+    return sde_utils.data_forward(x0, T, N, vector_fields())
 
 
 def data_importance(x0, y, T, N):
@@ -25,7 +25,7 @@ def data_importance(x0, y, T, N):
         reverse process: (t, dim), where t is the number of time steps and dim the dimension of the SDE
         correction process: float, correction process at time T
         """
-        reverse_and_correction_ = utils.important_reverse_and_correction(
+        reverse_and_correction_ = sde_utils.important_reverse_and_correction(
             key, time_reverse, x0, y, drift, diffusion, correction_drift
         )
         reverse_ = reverse_and_correction_[:, :-1]
@@ -51,7 +51,7 @@ def data_reverse(y, T, N):
         correction process: float, correction process at time T
         """
         start_val = jnp.append(y, 1.0)
-        reverse_and_correction_ = utils.solution(
+        reverse_and_correction_ = sde_utils.solution(
             key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion
         )
         reverse_ = reverse_and_correction_[:, :-1]
@@ -78,7 +78,7 @@ def data_reverse_guided(x0, y, T, N):
     @jax.jit
     @jax.vmap
     def data(key):
-        reverse_ = utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion)
+        reverse_ = sde_utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion)
         correction_ = (1.0,)  # Need to work out what this should be (maybe just r.T?)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 
