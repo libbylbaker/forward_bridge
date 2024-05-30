@@ -5,14 +5,10 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-
 [project]
-name = "doobs_score_matching"
+name = "sdebridge"
 version = "0.0.1"
-authors = [
-  { name="Elizabeth Baker", email="elba@di.ku.dk" },
-]
-description = ""
+
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
@@ -23,16 +19,20 @@ classifiers = [
 
 dependencies = [
     "jax[cpu]",
-    "diffrax",
-    "matplotlib",
     "flax",
     "orbax",
+    "tensorflow",
+    "tensorflow_datasets",
+    "einops",
+    "tqdm",
+    "opencv-python",
 ]
-
 
 [project.optional-dependencies]
 examples = [
-    "jupyter"]
+    "jupyter",
+    "tueplots",
+    "matplotlib",]
 
 test =[
     "pytest",
@@ -44,11 +44,12 @@ format =[
     "isort",
     "black",
 ]
-full = ["doobs_score_matching[examples]", "doobs_score_matching[test]", "doobs_score_matching[lint]", "doobs_score_matching[format]"]
+full = ["sdebridge[examples]", "sdebridge[test]", "sdebridge[lint]", "sdebridge[format]"]
 
 
-[project.urls]
-"Homepage" = "https://github.com/libbylbaker/score_matching_doob.git"
+[tool.setuptools.packages.find]
+where = ["."]  # list of folders that contain the packages (["."] by default)
+include = ["sdebridge*"]  # package names should match these glob patterns (["*"] by default)
 
 
 [tool.isort]
@@ -56,7 +57,7 @@ multi_line_output = "3"
 include_trailing_comma = "true"
 force_grid_wrap = "0"
 use_parentheses = "true"
-line_length = "99"
+line_length = "120"
 
 [tool.black]
-line-length = "99"
+line-length = "120"

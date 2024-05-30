@@ -8,14 +8,8 @@ _KAPPA = 0.1
 GRID_SIZE = 5
 
 
-def noise_dim():
-    return GRID_SIZE**2
-
-
 def data_forward(x0, T, N):
-    return sde_utils.data_forward(
-        x0, T, N, vector_fields_independent(), bm_shape=(2 * noise_dim(),)
-    )
+    return sde_utils.data_forward(x0, T, N, vector_fields_independent(), bm_shape=(2 * GRID_SIZE**2,))
 
 
 def data_reverse(y, T, N):
@@ -32,29 +26,11 @@ def data_reverse(y, T, N):
     @jax.vmap
     def data(key):
         reverse_ = sde_utils.solution(
-            key, ts_reverse, y, reverse_drift, reverse_diffusion, bm_shape=(2 * noise_dim(),)
+            key, ts_reverse, y, reverse_drift, reverse_diffusion, bm_shape=(2 * GRID_SIZE**2,)
         )
         return ts[..., None], reverse_, 1
 
     return data
-
-
-def vector_fields(dim=2, eps=1e-7):
-    def drift(t, x, *args):
-        return jnp.zeros_like(x)
-
-    def diffusion(t, x, *args):
-        x = x.reshape(-1, dim)  # x is of shape (#lms, dim)
-        n_pts = x.shape[0]
-        kernel_fn = lambda y: _KAPPA**2 * jnp.exp(
-            -0.5 * jnp.sum(jnp.square(y), axis=-1) / _SIGMA**2
-        )
-        dist = x[:, None, :] - x[None, :, :]
-        kernel = kernel_fn(dist) + eps * jnp.eye(n_pts)  # Regularization to avoid singular matrix
-        Q_half = jnp.kron(kernel, jnp.eye(2))
-        return Q_half
-
-    return drift, diffusion
 
 
 def vector_fields_independent(grid_range=(-1, 2), dim=2, eps=1e-10):
@@ -104,7 +80,7 @@ def vector_fields_reverse():
 
 
 def drift_correction(t, rev, corr, *args):
-    _, diffusion = vector_fields()
+    _, diffusion = vector_fields_independent()
     covariance = lambda x: diffusion(t, x) @ diffusion(t, x).T
     c = jax.hvp(covariance, (rev,), (jnp.ones(rev.shape),))
     return c
