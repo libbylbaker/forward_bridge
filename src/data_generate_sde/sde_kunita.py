@@ -9,7 +9,7 @@ GRID_SIZE = 5
 
 
 def data_forward(x0, T, N):
-    return sde_utils.data_forward(x0, T, N, vector_fields_independent(), bm_shape=(2 * GRID_SIZE**2,))
+    return sde_utils.data_forward(x0, T, N, vector_fields(), bm_shape=(2 * GRID_SIZE**2,))
 
 
 def data_reverse(y, T, N):
@@ -33,7 +33,7 @@ def data_reverse(y, T, N):
     return data
 
 
-def vector_fields_independent(grid_range=(-1, 2), dim=2, eps=1e-10):
+def vector_fields(grid_range=(-1, 2), dim=2, eps=1e-10):
     grid_ = jnp.linspace(*grid_range, GRID_SIZE)
     grid_ = jnp.stack(jnp.meshgrid(grid_, grid_, indexing="xy"), axis=-1)
     grid_ = grid_.reshape(-1, dim)
@@ -59,7 +59,7 @@ def vector_fields_independent(grid_range=(-1, 2), dim=2, eps=1e-10):
 
 
 def vector_fields_reverse():
-    forward_drift, forward_diffusion = vector_fields_independent()
+    forward_drift, forward_diffusion = vector_fields()
 
     def drift(t, x, *args):
         assert x.ndim == 1
@@ -80,7 +80,7 @@ def vector_fields_reverse():
 
 
 def drift_correction(t, rev, corr, *args):
-    _, diffusion = vector_fields_independent()
+    _, diffusion = vector_fields()
     covariance = lambda x: diffusion(t, x) @ diffusion(t, x).T
     c = jax.hvp(covariance, (rev,), (jnp.ones(rev.shape),))
     return c

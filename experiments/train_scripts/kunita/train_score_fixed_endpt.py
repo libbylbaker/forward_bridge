@@ -4,7 +4,7 @@ import optax
 import orbax
 from flax.training import orbax_utils
 
-from src.data_generate_sde import sde_langevin_landmarks
+from src.data_generate_sde import sde_kunita
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
 from src.training import train_utils
@@ -12,7 +12,7 @@ from src.training import train_utils
 seed = 1
 
 
-def main(key, n=2, T=1.0):
+def main(key, T=1.0):
     def _save(params, opt_state):
         ckpt = {
             "params": params,
@@ -27,16 +27,14 @@ def main(key, n=2, T=1.0):
 
     num_landmarks = 5
 
-    p0 = jnp.ones(shape=(num_landmarks, 2))
-    q0_x = jnp.linspace(0, 5, num_landmarks)
-    q0_y = jnp.zeros(num_landmarks)
-    q0 = jnp.stack([q0_x, q0_y], axis=1)
-    y = jnp.stack([p0, q0], axis=0)
+    y_1 = jnp.linspace(0, 5, num_landmarks)
+    y_2 = jnp.zeros(num_landmarks)
+    y = jnp.stack([y_1, y_2], axis=1).flatten()
 
-    sde = {"x0": [0.1, 0.1], "N": 600, "dim": n, "T": T, "y": y}
+    sde = {"x0": [0.1, 0.1], "N": 100, "dim": y.size, "T": T, "y": y}
     dt = sde["T"] / sde["N"]
 
-    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/cell/fixed_y_{num_landmarks}"
+    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/kunita/fixed_y_lms_{num_landmarks}"
 
     network = {
         "output_dim": sde["dim"],
@@ -56,15 +54,15 @@ def main(key, n=2, T=1.0):
     }
 
     # weight_fn = sde_cell_model.weight_function_gaussian(x0, 1.)
-    drift, diffusion = sde_langevin_landmarks.vector_fields()
-    data_fn = sde_langevin_landmarks.data_reverse(sde["y"], sde["T"], sde["N"])
+    drift, diffusion = sde_kunita.vector_fields()
+    data_fn = sde_kunita.data_reverse(sde["y"], sde["T"], sde["N"])
 
     model = ScoreMLP(**network)
-    optimiser = optax.adam(learning_rate=training["lr"])
+    optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
 
     score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
 
-    x_shape = jnp.empty(shape=(1, *y.shape))
+    x_shape = jnp.empty(shape=(1, sde["dim"]))
     t_shape = jnp.empty(shape=(1, 1))
     model_init_sizes = (x_shape, t_shape)
 
@@ -84,15 +82,11 @@ def main(key, n=2, T=1.0):
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         data = data_fn(data_key)
-        infinite_dataloader = dataloader(
-            data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0]
-        )
+        infinite_dataloader = dataloader(data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0])
 
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
-            for batch, (ts, reverse, correction) in zip(
-                range(batches_per_epoch), infinite_dataloader
-            ):
+            for batch, (ts, reverse, correction) in zip(range(batches_per_epoch), infinite_dataloader):
                 params, opt_state, _loss = train_step(params, opt_state, ts, reverse, correction)
                 total_loss = total_loss + _loss
             epoch_loss = total_loss / batches_per_epoch
@@ -100,9 +94,7 @@ def main(key, n=2, T=1.0):
             actual_epoch = load * training["epochs_per_load"] + epoch
             print(f"Epoch: {actual_epoch}, Loss: {epoch_loss}")
 
-            last_epoch = (
-                load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
-            )
+            last_epoch = load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             if actual_epoch % 100 == 0 or last_epoch:
                 _save(params, opt_state)
 

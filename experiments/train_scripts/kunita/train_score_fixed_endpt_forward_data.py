@@ -25,7 +25,7 @@ def main(key, T=1.0):
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-    num_landmarks = 5
+    num_landmarks = 2
 
     y_1 = jnp.linspace(0, 5, num_landmarks)
     y_2 = jnp.zeros(num_landmarks)
@@ -41,8 +41,8 @@ def main(key, T=1.0):
         "time_embedding_dim": 128,
         "init_embedding_dim": 128,
         "activation": "leaky_relu",
-        "encoder_layer_dims": [128, 128],
-        "decoder_layer_dims": [128, 128],
+        "encoder_layer_dims": [128, 64, 32],
+        "decoder_layer_dims": [32, 64, 128],
     }
 
     training = {
@@ -82,15 +82,11 @@ def main(key, T=1.0):
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         data = data_fn(data_key)
-        infinite_dataloader = dataloader(
-            data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0]
-        )
+        infinite_dataloader = dataloader(data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0])
 
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
-            for batch, (ts, reverse, correction) in zip(
-                range(batches_per_epoch), infinite_dataloader
-            ):
+            for batch, (ts, reverse, correction) in zip(range(batches_per_epoch), infinite_dataloader):
                 params, opt_state, _loss = train_step(params, opt_state, ts, reverse, correction)
                 total_loss = total_loss + _loss
             epoch_loss = total_loss / batches_per_epoch
@@ -98,9 +94,7 @@ def main(key, T=1.0):
             actual_epoch = load * training["epochs_per_load"] + epoch
             print(f"Epoch: {actual_epoch}, Loss: {epoch_loss}")
 
-            last_epoch = (
-                load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
-            )
+            last_epoch = load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             if actual_epoch % 100 == 0 or last_epoch:
                 _save(params, opt_state)
 

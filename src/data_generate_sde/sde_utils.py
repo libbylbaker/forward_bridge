@@ -35,9 +35,7 @@ def data_reverse(y, T, N, vector_fields_reverse_and_correction, weight_fn=None):
         correction process: float, correction process at time T
         """
         start_val = jnp.append(y, 1.0)
-        reverse_and_correction_ = solution(
-            key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion
-        )
+        reverse_and_correction_ = solution(key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion)
         reverse_ = reverse_and_correction_[:, :-1]
         correction_ = reverse_and_correction_[-1, -1]
         return ts[..., None], reverse_, correction_
@@ -70,9 +68,7 @@ def data_reverse_guided(x0, y, T, N, vector_fields_reverse_and_correction_guided
     @jax.jit
     @jax.vmap
     def data(key):
-        reverse_and_correction = solution(
-            key, ts_reverse, start_val, guided_drift, guided_diffusion, y.shape
-        )
+        reverse_and_correction = solution(key, ts_reverse, start_val, guided_drift, guided_diffusion, y.shape)
         reverse = reverse_and_correction[:, :-1]
         correction = reverse_and_correction[:, -1]
         return ts[..., None], reverse, correction
@@ -95,12 +91,8 @@ def vector_fields_reverse_and_correction_guided(
 ):
     reverse_drift, reverse_diffusion = vector_fields_reverse
     B_auxiliary, beta_auxiliary, sigma_auxiliary = reverse_guided_auxiliary
-    guide_fn = guided_process.get_guide_fn(
-        0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary
-    )
-    guided_drift, _ = guided_process.vector_fields_guided(
-        reverse_drift, reverse_diffusion, guide_fn
-    )
+    guide_fn = guided_process.get_guide_fn(0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary)
+    guided_drift, _ = guided_process.vector_fields_guided(reverse_drift, reverse_diffusion, guide_fn)
 
     def drift(t, x):
         reverse = x[:-1]
@@ -133,7 +125,7 @@ def conditioned(key, ts, x0, score_fn, drift, diffusion):
     return sol
 
 
-def backward(key, ts, y, score_fn, drift, diffusion):
+def backward(key, ts, y, score_fn, drift, diffusion, bm_shape=None):
     y = jnp.asarray(y)
     T = ts[-1]
 
@@ -154,7 +146,7 @@ def backward(key, ts, y, score_fn, drift, diffusion):
 
         return forward_drift + cov @ _score + divergence_cov
 
-    sol = solution(key, ts, y, _drift, _diffusion)
+    sol = solution(key, ts, y, _drift, _diffusion, bm_shape=bm_shape)
     return sol
 
 
@@ -178,9 +170,7 @@ def solution(key, ts, x0, drift, diffusion, bm_shape=None):
     return jnp.concatenate([x0[None], x_all], axis=0)
 
 
-def important_reverse_and_correction(
-    key, ts, x0, y, reverse_drift, reverse_diffusion, correction_drift
-):
+def important_reverse_and_correction(key, ts, x0, y, reverse_drift, reverse_diffusion, correction_drift):
     y = jnp.asarray(y)
     x0 = jnp.asarray(x0)
     assert y.ndim == 1
@@ -219,9 +209,7 @@ def important_reverse_and_correction(
         bottom_block_zeros = jnp.zeros(shape=(corr_next.shape[0], reverse_next.shape[1]))
         return jnp.block([[reverse_next, top_block_zeros], [corr_next, bottom_block_zeros]])
 
-    sol = solution(
-        key, ts, x0=rev_corr, drift=_drift, diffusion=_diffusion, bm_shape=(2 * y.size,)
-    )
+    sol = solution(key, ts, x0=rev_corr, drift=_drift, diffusion=_diffusion, bm_shape=(2 * y.size,))
     return sol
 
 

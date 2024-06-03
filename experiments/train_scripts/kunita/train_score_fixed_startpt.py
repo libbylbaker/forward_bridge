@@ -1,14 +1,10 @@
-import flax.linen as nn
 import jax.numpy as jnp
-import jax.random
 import jax.random as jr
-import matplotlib.pyplot as plt
 import optax
 import orbax
 from flax.training import orbax_utils
 
-from src import plotting
-from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
+from src.data_generate_sde import sde_kunita
 from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
 from src.training import train_utils
@@ -16,19 +12,7 @@ from src.training import train_utils
 seed = 1
 
 
-def main(key, n=1, T=1.0):
-    def plot_score(model, params):
-        trained_score = train_utils.trained_score(model, params)
-        _ = plotting.plot_score(
-            ou.score,
-            trained_score,
-            sde["T"],
-            sde["y"],
-            x=jnp.linspace(-3, 5, 1000)[..., None],
-            t=jnp.asarray([0.25, 0.5, 0.75]),
-        )
-        plt.show()
-
+def main(key, T=1.0):
     def _save(params, opt_state):
         ckpt = {
             "params": params,
@@ -41,36 +25,44 @@ def main(key, n=1, T=1.0):
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-    sde = {"x0": (1.0,), "N": 100, "dim": n, "T": T, "y": jnp.ones((4,))}
+    num_landmarks = 2
+
+    def sample_circle(num_landmarks: int, radius=1.0, centre=jnp.asarray([0, 0])) -> jnp.ndarray:
+        theta = jnp.linspace(0, 2 * jnp.pi, num_landmarks, endpoint=False)
+        x = jnp.cos(theta)
+        y = jnp.sin(theta)
+        return (radius * jnp.stack([x, y], axis=1) + centre).flatten()
+
+    x0 = sample_circle(num_landmarks)
+
+    sde = {"x0": x0, "N": 100, "dim": x0.size, "T": T}
     dt = sde["T"] / sde["N"]
 
-    y = sde["y"]
-    x0 = sde["x0"]
-    dim = sde["dim"]
-    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/ou/fixed_y{y}_10_reloads"
+    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/kunita/fixed_x0_lms_{num_landmarks}"
 
     network = {
         "output_dim": sde["dim"],
-        "time_embedding_dim": 16,
-        "init_embedding_dim": 16,
-        "activation": "leaky_relu",
-        "encoder_layer_dims": [16],
-        "decoder_layer_dims": [128, 128],
+        "time_embedding_dim": 64,
+        "init_embedding_dim": 32,
+        "activation": "gelu",
+        "encoder_layer_dims": [64, 32, 32],
+        "decoder_layer_dims": [32, 32, 32],
     }
 
     training = {
-        "batch_size": 100,
+        "batch_size": 64,
         "epochs_per_load": 1,
         "lr": 0.01,
-        "num_reloads": 10,
-        "load_size": 1000,
+        "num_reloads": 50,
+        "load_size": 64 * 50,
     }
 
-    drift, diffusion = ou.vector_fields()
-    data_fn = ou.data_reverse(sde["y"], sde["T"], sde["N"])
+    # weight_fn = sde_cell_model.weight_function_gaussian(x0, 1.)
+    drift, diffusion = sde_kunita.vector_fields()
+    data_fn = sde_kunita.data_forward(sde["x0"], sde["T"], sde["N"])
 
     model = ScoreMLP(**network)
-    optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
+    optimiser = optax.adam(learning_rate=training["lr"])
 
     score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
 
@@ -81,7 +73,7 @@ def main(key, n=1, T=1.0):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
-    train_step, params, opt_state = train_utils.create_train_step_reverse(
+    train_step, params, opt_state = train_utils.create_train_step_forward(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
@@ -94,15 +86,11 @@ def main(key, n=1, T=1.0):
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         data = data_fn(data_key)
-        infinite_dataloader = dataloader(
-            data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0]
-        )
+        infinite_dataloader = dataloader(data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0])
 
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
-            for batch, (ts, reverse, correction) in zip(
-                range(batches_per_epoch), infinite_dataloader
-            ):
+            for batch, (ts, reverse, correction) in zip(range(batches_per_epoch), infinite_dataloader):
                 params, opt_state, _loss = train_step(params, opt_state, ts, reverse, correction)
                 total_loss = total_loss + _loss
             epoch_loss = total_loss / batches_per_epoch
@@ -110,12 +98,9 @@ def main(key, n=1, T=1.0):
             actual_epoch = load * training["epochs_per_load"] + epoch
             print(f"Epoch: {actual_epoch}, Loss: {epoch_loss}")
 
-            last_epoch = (
-                load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
-            )
+            last_epoch = load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             if actual_epoch % 100 == 0 or last_epoch:
                 _save(params, opt_state)
-                # plot_score(model, params)
 
 
 if __name__ == "__main__":

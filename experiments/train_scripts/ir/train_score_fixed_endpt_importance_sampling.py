@@ -49,9 +49,7 @@ def main(key):
 
     # initialise train_state, score_fn and train_step
 
-    train_state = utils.create_train_state(
-        model, train_key, training["lr"], x_shape=x_shape, t_shape=t_shape
-    )
+    train_state = utils.create_train_state(model, train_key, training["lr"], x_shape=x_shape, t_shape=t_shape)
 
     # training
 
@@ -63,17 +61,13 @@ def main(key):
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         data = data_fn(data_key)
-        infinite_dataloader = dataloader(
-            data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0]
-        )
+        infinite_dataloader = dataloader(data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0])
 
         plotting.visualise_data(data)
 
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
-            for batch, (ts, reverse, correction) in zip(
-                range(batches_per_epoch), infinite_dataloader
-            ):
+            for batch, (ts, reverse, correction) in zip(range(batches_per_epoch), infinite_dataloader):
                 train_state, _loss = train_step(train_state, ts, reverse, correction)
                 total_loss = total_loss + _loss
             epoch_loss = total_loss / batches_per_epoch

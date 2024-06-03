@@ -79,15 +79,11 @@ def main(key, n=2, T=2.0):
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         data = data_fn(data_key)
-        infinite_dataloader = dataloader(
-            data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0]
-        )
+        infinite_dataloader = dataloader(data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0])
 
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
-            for batch, (ts, reverse, correction) in zip(
-                range(batches_per_epoch), infinite_dataloader
-            ):
+            for batch, (ts, reverse, correction) in zip(range(batches_per_epoch), infinite_dataloader):
                 params, opt_state, _loss = train_step(params, opt_state, ts, reverse, correction)
                 total_loss = total_loss + _loss
             epoch_loss = total_loss / batches_per_epoch
@@ -95,9 +91,7 @@ def main(key, n=2, T=2.0):
             actual_epoch = load * training["epochs_per_load"] + epoch
             print(f"Epoch: {actual_epoch}, Loss: {epoch_loss}")
 
-            last_epoch = (
-                load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
-            )
+            last_epoch = load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             if actual_epoch % 100 == 0 or last_epoch:
                 _save(params, opt_state)
 
