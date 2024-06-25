@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import sde_kunita
+from src.sdes import sde_kunita
 
 
 def test_reverse():

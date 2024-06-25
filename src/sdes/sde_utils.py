@@ -2,7 +2,7 @@ import diffrax
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import guided_process, time
+from src.sdes import guided_process, time
 
 
 def data_forward(x0, T, N, vector_fields, bm_shape=None):
@@ -112,7 +112,7 @@ def vector_fields_reverse_and_correction_guided(
     return drift, diffusion
 
 
-def conditioned(key, ts, x0, score_fn, drift, diffusion):
+def conditioned(key, ts, x0, score_fn, drift, diffusion, bm_shape=None):
     x0 = jnp.asarray(x0)
 
     def _drift(t, x, *args):
@@ -121,7 +121,7 @@ def conditioned(key, ts, x0, score_fn, drift, diffusion):
         diffusion_tx = diffusion(t, x)
         return forward_drift + diffusion_tx @ diffusion_tx.T @ _score.reshape(-1)
 
-    sol = solution(key, ts, x0, _drift, diffusion)
+    sol = solution(key, ts, x0, _drift, diffusion, bm_shape)
     return sol
 
 

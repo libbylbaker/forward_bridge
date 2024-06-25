@@ -1,21 +1,24 @@
+import os.path
+
 import jax.numpy as jnp
 import jax.random as jr
 import optax
 import orbax
 from flax.training import orbax_utils
 
-from src.data_generate_sde import sde_kunita
-from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
+from src.sdes import sde_kunita
 from src.training import train_utils
+from src.training.data_loader import dataloader
 
 seed = 1
 
 
 def main(key, T=1.0):
-    def _save(params, opt_state):
+    def _save(params, opt_state, batch_stats):
         ckpt = {
             "params": params,
+            "batch_stats": batch_stats,
             "opt_state": opt_state,
             "sde": sde,
             "network": network,
@@ -25,32 +28,31 @@ def main(key, T=1.0):
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
 
-    num_landmarks = 5
+    num_landmarks = 2
 
-    y_1 = jnp.linspace(0, 5, num_landmarks)
-    y_2 = jnp.zeros(num_landmarks)
-    y = jnp.stack([y_1, y_2], axis=1).flatten()
+    y = jnp.asarray([-0.5, 0.0, 0.5, 0.0])
 
     sde = {"x0": [0.1, 0.1], "N": 100, "dim": y.size, "T": T, "y": y}
     dt = sde["T"] / sde["N"]
 
-    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/kunita/fixed_y_lms_{num_landmarks}"
+    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/fixed_y_lms_{num_landmarks}")
 
     network = {
         "output_dim": sde["dim"],
-        "time_embedding_dim": 16,
-        "init_embedding_dim": 16,
+        "time_embedding_dim": 64,
+        "init_embedding_dim": 64,
         "activation": "leaky_relu",
-        "encoder_layer_dims": [16],
-        "decoder_layer_dims": [128, 128],
+        "encoder_layer_dims": [256, 128, 64],
+        "decoder_layer_dims": [64, 128, 256],
+        "batch_norm": True,
     }
 
     training = {
-        "batch_size": 1000,
+        "batch_size": 64,
         "epochs_per_load": 1,
-        "lr": 0.01,
-        "num_reloads": 1000,
-        "load_size": 1000,
+        "lr": 5e-3,
+        "num_reloads": 300,
+        "load_size": 64 * 50,
     }
 
     # weight_fn = sde_cell_model.weight_function_gaussian(x0, 1.)
@@ -69,7 +71,7 @@ def main(key, T=1.0):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
-    train_step, params, opt_state = train_utils.create_train_step_reverse(
+    train_step, params, opt_state, batch_stats = train_utils.create_train_step_reverse(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
@@ -87,7 +89,9 @@ def main(key, T=1.0):
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
             for batch, (ts, reverse, correction) in zip(range(batches_per_epoch), infinite_dataloader):
-                params, opt_state, _loss = train_step(params, opt_state, ts, reverse, correction)
+                params, batch_stats, opt_state, _loss = train_step(
+                    params, batch_stats, opt_state, ts, reverse, correction
+                )
                 total_loss = total_loss + _loss
             epoch_loss = total_loss / batches_per_epoch
 
@@ -96,7 +100,7 @@ def main(key, T=1.0):
 
             last_epoch = load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             if actual_epoch % 100 == 0 or last_epoch:
-                _save(params, opt_state)
+                _save(params, opt_state, batch_stats)
 
 
 if __name__ == "__main__":

@@ -4,10 +4,10 @@ import optax
 import orbax
 from flax.training import orbax_utils
 
-from src.data_generate_sde import sde_cell_model
-from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
-from src.training import utils
+from src.sdes import sde_cell_model
+from src.training import train_utils
+from src.training.data_loader import dataloader
 
 seed = 1
 
@@ -57,7 +57,7 @@ def main(key, n=2, T=2.0):
     model = ScoreMLP(**network)
     optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
 
-    score_fn = utils.get_score(drift=drift, diffusion=diffusion)
+    score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
 
     x_shape = jnp.empty(shape=(1, sde["dim"]))
     t_shape = jnp.empty(shape=(1, 1))
@@ -66,7 +66,7 @@ def main(key, n=2, T=2.0):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
-    train_step, params, opt_state = utils.create_train_step_reverse(
+    train_step, params, opt_state = train_utils.create_train_step_reverse(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 

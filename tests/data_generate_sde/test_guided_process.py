@@ -2,9 +2,9 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from src.data_generate_sde import guided_process
-from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
-from src.data_generate_sde import time
+from src.sdes import guided_process
+from src.sdes import sde_ornstein_uhlenbeck as ou
+from src.sdes import time
 
 
 @pytest.fixture

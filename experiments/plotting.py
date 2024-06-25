@@ -4,17 +4,27 @@ import matplotlib.pyplot as plt
 import orbax.checkpoint
 
 import src.models
-from src.training import utils
+from src.training import train_utils
 
 
-def restore_checkpoint_ScoreMLP(checkpoint_path):
+def load_checkpoint_wo_batch_stats(checkpoint_path):
+    orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+    restored = orbax_checkpointer.restore(checkpoint_path)
+    model = src.models.score_mlp.ScoreMLP(**restored["network"])
+    params = restored["params"]["params"]
+    batch_stats = {}
+    trained_score = train_utils.trained_score(model, params, batch_stats)
+    return trained_score, restored
+
+
+def load_checkpoint_w_batch_stats(checkpoint_path):
     orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
     restored = orbax_checkpointer.restore(checkpoint_path)
     model = src.models.score_mlp.ScoreMLP(**restored["network"])
     params = restored["params"]
-    trained_score = utils.trained_score(model, params)
-    sde = restored["sde"]
-    return trained_score, sde
+    batch_stats = restored["batch_stats"]
+    trained_score = train_utils.trained_score(model, params, batch_stats)
+    return trained_score, restored
 
 
 def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max, cmap="viridis"):
@@ -27,17 +37,13 @@ def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max,
 
     fig, axs = plt.subplots(nrows=2, ncols=t.size, sharey=True, sharex=True)
     for col, ts in enumerate(t):
-        vectorised_learnt_score = jax.vmap(
-            jax.vmap(learned_score, in_axes=(None, 0, 0)), in_axes=(None, 0, 0)
-        )
+        vectorised_learnt_score = jax.vmap(jax.vmap(learned_score, in_axes=(None, 0, 0)), in_axes=(None, 0, 0))
         score_pred = vectorised_learnt_score(ts, x, y)
         pc = axs[0, col].pcolormesh(x.squeeze(), y.squeeze(), score_pred.squeeze(), cmap=cmap)
         axs[0, col].set_title(f"Time: {ts:.2f}")
 
     for col, ts in enumerate(t):
-        vectorised_score = jax.vmap(
-            jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0)
-        )
+        vectorised_score = jax.vmap(jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0))
         score_true = vectorised_score(ts, x.squeeze(), 1.0, y.squeeze())
         pc = axs[1, col].pcolormesh(x.squeeze(), y.squeeze(), score_true.squeeze(), cmap=cmap)
     fig.colorbar(pc, ax=axs.ravel().tolist())
@@ -45,9 +51,7 @@ def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max,
     return fig, axs
 
 
-def plot_score_error_variable_y(
-    true_score, learned_score, x_min, x_max, y_min, y_max, cmap="viridis"
-):
+def plot_score_error_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max, cmap="viridis"):
     x = jnp.linspace(x_min, x_max, 100)
     y = jnp.linspace(y_min, y_max, 100)
     t = jnp.asarray([0.25, 0.5, 0.75])
@@ -57,18 +61,12 @@ def plot_score_error_variable_y(
 
     fig, axs = plt.subplots(nrows=1, ncols=t.size, sharey=True, sharex=True)
     for col, ts in enumerate(t):
-        vectorised_learnt_score = jax.vmap(
-            jax.vmap(learned_score, in_axes=(None, 0, 0)), in_axes=(None, 0, 0)
-        )
+        vectorised_learnt_score = jax.vmap(jax.vmap(learned_score, in_axes=(None, 0, 0)), in_axes=(None, 0, 0))
         score_pred = vectorised_learnt_score(ts, x, y)
-        vectorised_score = jax.vmap(
-            jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0)
-        )
+        vectorised_score = jax.vmap(jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0))
         score_true = vectorised_score(ts, x.squeeze(), 1.0, y.squeeze())
         # mse = jnp.mean((score_pred.squeeze() - score_true.squeeze()) ** 2)
-        log_abs_error = jnp.log(
-            abs(score_pred.squeeze() - score_true.squeeze()) + jnp.finfo(score_pred.dtype).eps
-        )
+        log_abs_error = jnp.log(abs(score_pred.squeeze() - score_true.squeeze()) + jnp.finfo(score_pred.dtype).eps)
         abs_error = abs(score_pred.squeeze() - score_true.squeeze())
         # eps = 1e-1
         # rel_error = abs_error / (abs(score_true.squeeze()) + eps)

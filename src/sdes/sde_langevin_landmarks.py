@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import sde_utils, time
+from src.sdes import sde_utils, time
 
 kernel_sigma, diffusion_constant, dissipation_constant = 0.5, jnp.sqrt(0.1), 0.5
 

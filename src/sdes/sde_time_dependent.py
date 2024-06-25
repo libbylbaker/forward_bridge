@@ -1,7 +1,7 @@
 import jax.numpy
 import jax.numpy as jnp
 
-from src.data_generate_sde import guided_process, sde_utils, time
+from src.sdes import guided_process, sde_utils, time
 
 C = 1
 
@@ -59,9 +59,7 @@ def data_reverse(y, T, N):
         correction process: float, correction process at time T
         """
         start_val = jnp.append(y, 1.0)
-        reverse_and_correction_ = sde_utils.solution(
-            key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion
-        )
+        reverse_and_correction_ = sde_utils.solution(key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion)
         reverse_ = reverse_and_correction_[:, :-1]
         correction_ = reverse_and_correction_[-1, -1]
         return ts[..., None], reverse_, jnp.asarray(correction_)
@@ -76,12 +74,8 @@ def data_reverse_guided(x0, y, T, N):
     ts_reverse = time.reverse(T, ts)
     reverse_drift, reverse_diffusion = vector_fields_reverse()
     B_auxiliary, beta_auxiliary, sigma_auxiliary = reverse_guided_auxiliary(len(x0), y)
-    guide_fn = guided_process.get_guide_fn(
-        0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary
-    )
-    guided_drift, guided_diffusion = guided_process.vector_fields_guided(
-        reverse_drift, reverse_diffusion, guide_fn
-    )
+    guide_fn = guided_process.get_guide_fn(0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary)
+    guided_drift, guided_diffusion = guided_process.vector_fields_guided(reverse_drift, reverse_diffusion, guide_fn)
 
     @jax.jit
     @jax.vmap
@@ -129,9 +123,7 @@ def vector_fields_reverse_and_correction():
         assert x.ndim == 1
         _, rev_diff = vector_fields_reverse()
         rev_diffusion = rev_diff(t, x[:-1])
-        rev_corr_diff = jnp.pad(
-            rev_diffusion, ((0, 1), (0, 1)), mode="constant", constant_values=0.0
-        )
+        rev_corr_diff = jnp.pad(rev_diffusion, ((0, 1), (0, 1)), mode="constant", constant_values=0.0)
         return rev_corr_diff
 
     return drift, diffusion

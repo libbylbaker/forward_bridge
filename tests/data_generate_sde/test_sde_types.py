@@ -2,11 +2,10 @@ import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from src.data_generate_sde import (
+from src.sdes import (
     sde_bm,
     sde_cell_model,
     sde_interest_rates,
-    sde_lagrangian_landmarks,
     sde_ornstein_uhlenbeck,
     sde_time_dependent,
     sde_utils,

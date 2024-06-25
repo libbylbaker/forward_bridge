@@ -4,7 +4,7 @@ import diffrax
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import sde_utils
+from src.sdes import sde_utils
 
 
 def vector_fields_guided(drift, diffusion, guide_fn):
@@ -15,9 +15,7 @@ def vector_fields_guided(drift, diffusion, guide_fn):
     return guided_drift, diffusion
 
 
-def get_guide_fn(
-    t0, T, y, sigma_auxiliary: Callable, B_auxiliary: Callable, beta_auxiliary: Callable
-):
+def get_guide_fn(t0, T, y, sigma_auxiliary: Callable, B_auxiliary: Callable, beta_auxiliary: Callable):
     ode_sol = _backward_ode(t0, T, sigma_auxiliary, B_auxiliary, beta_auxiliary)
     r = _define_r(ode_sol, T, y)
     return r
@@ -43,9 +41,7 @@ def _define_r(sol_L_M_mu: Callable, T, y: jax.Array):
     return r
 
 
-def _backward_ode(
-    t0, T, sigma_auxiliary: Callable, B_auxiliary: Callable, beta_auxiliary: Callable
-):
+def _backward_ode(t0, T, sigma_auxiliary: Callable, B_auxiliary: Callable, beta_auxiliary: Callable):
     dim = beta_auxiliary(0).shape[0]
 
     mu_T = jnp.zeros(shape=(dim,))

@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from doobs_score_matching.src.data_generate_sde.sde_langevin_landmarks import dH_p, dH_q, kernel
+from doobs_score_matching.src.sdes.sde_langevin_landmarks import dH_p, dH_q, kernel
 
 
 @pytest.fixture

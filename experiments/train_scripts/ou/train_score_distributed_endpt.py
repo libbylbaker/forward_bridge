@@ -1,17 +1,13 @@
-import functools
-
-import flax.linen as nn
-import jax
 import jax.numpy as jnp
 import jax.random as jr
 import optax
 import orbax
 from flax.training import orbax_utils
 
-from src.data_generate_sde import sde_ornstein_uhlenbeck as ou
-from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLPDistributedEndpt
-from src.training import utils
+from src.sdes import sde_ornstein_uhlenbeck as ou
+from src.training import train_utils
+from src.training.data_loader import dataloader
 
 seed = 1
 y_min = -1.0
@@ -44,7 +40,7 @@ data_fn = ou.data_reverse_variable_y(sde["T"], sde["N"])
 model = ScoreMLPDistributedEndpt(**network)
 optimiser = optax.adam(learning_rate=training["lr"])
 
-score_fn = utils.get_score(drift=drift, diffusion=diffusion)
+score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
 
 num_samples = training["batch_size"] * sde["N"]
 x_shape = jnp.empty(shape=(num_samples, sde["dim"]))
@@ -55,7 +51,7 @@ model_init_sizes = (x_shape, x_shape, t_shape)
 def main(key):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
-    train_step, params, opt_state = utils.create_train_step_variable_y(
+    train_step, params, opt_state = train_utils.create_train_step_variable_y(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 

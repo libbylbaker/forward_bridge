@@ -7,9 +7,7 @@ import jax.numpy as jnp
 
 @dataclasses.dataclass
 class SDEDef:
-    drift: Callable[
-        [float, jax.Array, Any], jax.Array
-    ]  # (scalar, array with ndim 1) -> array with ndim 1
+    drift: Callable[[float, jax.Array, Any], jax.Array]  # (scalar, array with ndim 1) -> array with ndim 1
     diffusion: Callable
 
 
@@ -30,7 +28,6 @@ def ornstein_uhlenbeck() -> SDEDef:
 
 
 def sde_solve(sde) -> Callable:
-
     def solve(key, u0, *params) -> SDESol:
         return diffrax.diffeqsolve(...)
 

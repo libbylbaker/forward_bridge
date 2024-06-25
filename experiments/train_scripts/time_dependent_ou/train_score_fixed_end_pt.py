@@ -4,10 +4,10 @@ import jax.random as jr
 import orbax
 from flax.training import orbax_utils
 
-from src.data_generate_sde import sde_time_dependent
-from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
+from src.sdes import sde_time_dependent
 from src.training import utils
+from src.training.data_loader import dataloader
 
 seed = 1
 

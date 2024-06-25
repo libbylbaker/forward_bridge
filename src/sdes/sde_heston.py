@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from src.data_generate_sde import time, utils
+from src.sdes import time, utils
 
 mu = 0.05
 xi = 0.1

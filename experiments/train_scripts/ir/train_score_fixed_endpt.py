@@ -5,11 +5,11 @@ import jax.random as jr
 import matplotlib.pyplot as plt
 
 from src import plotting
-from src.data_generate_sde import sde_interest_rates as ir
-from src.data_generate_sde import utils as sde_utils
-from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
+from src.sdes import sde_interest_rates as ir
+from src.sdes import utils as sde_utils
 from src.training import utils
+from src.training.data_loader import dataloader
 
 seed = 1
 

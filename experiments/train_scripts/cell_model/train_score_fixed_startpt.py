@@ -1,17 +1,15 @@
-import flax.linen as nn
-import jax
+import os
+
 import jax.numpy as jnp
 import jax.random as jr
-import matplotlib.pyplot as plt
 import optax
 import orbax
 from flax.training import orbax_utils
 
-from src import plotting
-from src.data_generate_sde import sde_cell_model
-from src.data_loader import dataloader
 from src.models.score_mlp import ScoreMLP
-from src.training import utils
+from src.sdes import sde_cell_model
+from src.training import train_utils
+from src.training.data_loader import dataloader
 
 seed = 1
 
@@ -20,7 +18,7 @@ sde = {"x0": [0.1, 0.1], "N": 100, "dim": n, "T": 2.0, "y": [2.0, 0.3]}
 dt = 0.01
 
 x0 = sde["x0"]
-checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/cell/forward/fixed_x0_{x0}"
+checkpoint_path = os.path.abspath(f"../checkpoints/cell/forward/fixed_x0_{x0}")
 
 network = {
     "output_dim": sde["dim"],
@@ -48,7 +46,7 @@ optimiser = optax.adam(learning_rate=training["lr"])
 
 # optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
 #
-score_fn = utils.get_score(drift=drift, diffusion=diffusion)
+score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
 
 x_shape = jnp.empty((1, sde["dim"]))
 t_shape = jnp.empty((1, 1))
@@ -59,7 +57,7 @@ def main(key):
     (data_key, dataloader_key, train_key) = jr.split(key, 3)
     data_key = jr.split(data_key, 1)
 
-    train_step, params, opt_state = utils.create_train_step_forward(
+    train_step, params, opt_state = train_utils.create_train_step_forward(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
