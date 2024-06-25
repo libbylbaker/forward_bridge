@@ -55,7 +55,7 @@ def main(key, checkpt_path, dim=1, T=1.0):
 
 
 if __name__ == "__main__":
-    seeds = [2]
+    seeds = [1, 2, 3]
     dims = jnp.arange(1, 33)
     Ts = jnp.arange(1, 16)
     for seed in seeds:

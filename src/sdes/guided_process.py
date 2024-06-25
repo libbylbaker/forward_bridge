@@ -1,6 +1,5 @@
 from typing import Callable
 
-import diffrax
 import jax
 import jax.numpy as jnp
 

@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from src.sdes import guided_process, sde_utils, time
+from src.sdes import sde_utils, time
 
 _SIGMA = 1.0
 _KAPPA = 0.1
@@ -38,7 +38,7 @@ def data_reverse(y, T, N):
     return data
 
 
-def vector_fields(grid_range=(-1, 2), dim=2, eps=1e-10):
+def vector_fields(grid_range=(-2, 2), dim=2, eps=1e-10):
     grid_ = jnp.linspace(*grid_range, GRID_SIZE)
     grid_ = jnp.stack(jnp.meshgrid(grid_, grid_, indexing="xy"), axis=-1)
     grid_ = grid_.reshape(-1, dim)

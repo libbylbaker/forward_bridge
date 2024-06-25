@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sdebridge"
+name = "forwardbridge"
 version = "0.0.1"
 
 readme = "README.md"
@@ -21,11 +21,6 @@ dependencies = [
     "jax[cpu]",
     "flax",
     "orbax",
-    "tensorflow",
-    "tensorflow_datasets",
-    "einops",
-    "tqdm",
-    "opencv-python",
 ]
 
 [project.optional-dependencies]
@@ -44,12 +39,12 @@ format =[
     "isort",
     "black",
 ]
-full = ["sdebridge[examples]", "sdebridge[test]", "sdebridge[lint]", "sdebridge[format]"]
+full = ["forwardbridge[examples]", "forwardbridge[test]", "forwardbridge[lint]", "forwardbridge[format]"]
 
 
 [tool.setuptools.packages.find]
 where = ["."]  # list of folders that contain the packages (["."] by default)
-include = ["sdebridge*"]  # package names should match these glob patterns (["*"] by default)
+include = ["forwardbridge*"]  # package names should match these glob patterns (["*"] by default)
 
 
 [tool.isort]

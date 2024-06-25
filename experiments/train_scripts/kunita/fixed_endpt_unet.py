@@ -3,26 +3,25 @@ import os.path
 import jax.numpy as jnp
 import jax.random as jr
 import optax
-import orbax
-from flax.training import orbax_utils
 
-from src.models.score_mlp import ScoreMLP
+
+from src.models.score_unet import ScoreUNet
 from src.sdes import sde_kunita
 from src.training import train_loop, train_utils
-from src.training.data_loader import dataloader
+from src import data_boundary_pts
 
 seed = 1
 
 
 def main(key, T=1.0):
-    num_landmarks = 2
+    num_landmarks = 5
 
-    y = jnp.asarray([-0.5, 0.0, 0.5, 0.0])
+    y = data_boundary_pts.sample_circle(5)
 
-    sde = {"x0": [0.1, 0.1], "N": 100, "dim": y.size, "T": T, "y": y}
+    sde = {"N": 100, "dim": y.size, "T": T, "y": y}
     dt = sde["T"] / sde["N"]
 
-    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/fixed_y_lms_{num_landmarks}")
+    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/circ_r1_lms_{num_landmarks}")
 
     network = {
         "output_dim": sde["dim"],
@@ -38,14 +37,14 @@ def main(key, T=1.0):
         "batch_size": 64,
         "epochs_per_load": 1,
         "lr": 5e-3,
-        "num_reloads": 300,
-        "load_size": 64 * 50,
+        "num_reloads": 15000,
+        "load_size": 64 * 1,
     }
 
     drift, diffusion = sde_kunita.vector_fields()
     data_fn = sde_kunita.data_reverse(sde["y"], sde["T"], sde["N"])
 
-    model = ScoreMLP(**network)
+    model = ScoreUNet(**network)
     optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
 
     score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
