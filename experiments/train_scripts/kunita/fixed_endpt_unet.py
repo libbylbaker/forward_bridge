@@ -4,11 +4,10 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-
+from src import data_boundary_pts
 from src.models.score_unet import ScoreUNet
 from src.sdes import sde_kunita
 from src.training import train_loop, train_utils
-from src import data_boundary_pts
 
 seed = 1
 
@@ -37,8 +36,8 @@ def main(key, T=1.0):
         "batch_size": 64,
         "epochs_per_load": 1,
         "lr": 5e-3,
-        "num_reloads": 15000,
-        "load_size": 64 * 1,
+        "num_reloads": 300,
+        "load_size": 64,
     }
 
     drift, diffusion = sde_kunita.vector_fields()

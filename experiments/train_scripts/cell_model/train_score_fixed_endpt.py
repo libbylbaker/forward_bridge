@@ -1,40 +1,27 @@
+import os.path
+
 import jax.numpy as jnp
 import jax.random as jr
 import optax
-import orbax
-from flax.training import orbax_utils
 
 from src.models.score_mlp import ScoreMLP
 from src.sdes import sde_cell_model
-from src.training import train_utils
-from src.training.data_loader import dataloader
+from src.training import train_loop, train_utils
 
 seed = 1
 
 
-def main(key, n=2, T=3.0):
-    def _save(params, opt_state):
-        ckpt = {
-            "params": params,
-            "opt_state": opt_state,
-            "sde": sde,
-            "network": network,
-            "training": training,
-        }
-        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
-        save_args = orbax_utils.save_args_from_target(ckpt)
-        orbax_checkpointer.save(checkpoint_path, ckpt, save_args=save_args, force=True)
-
-    sde = {"x0": [0.1, 0.1], "N": 600, "dim": n, "T": T, "y": [1.8, 0.2]}
+def main(key, T=2.0):
+    sde = {"N": 50, "dim": 2, "T": T, "y": [10.0, 0.0]}
     dt = sde["T"] / sde["N"]
 
     y = sde["y"]
     N = sde["N"]
-    checkpoint_path = f"/Users/libbybaker/Documents/Python/doobs-score-project/doobs_score_matching/checkpoints/cell/fixed_y_{y}_T_{T}_N_{N}"
+    checkpoint_path = os.path.abspath(f"../../checkpoints/cell/fixed_y_{y}_T_{T}_N_{N}")
 
     network = {
         "output_dim": sde["dim"],
-        "time_embedding_dim": 16,
+        "time_embedding_dim": 32,
         "init_embedding_dim": 16,
         "activation": "leaky_relu",
         "encoder_layer_dims": [16],
@@ -42,14 +29,13 @@ def main(key, n=2, T=3.0):
     }
 
     training = {
-        "batch_size": 1000,
+        "batch_size": 100,
         "epochs_per_load": 1,
-        "lr": 0.01,
-        "num_reloads": 1000,
-        "load_size": 1000,
+        "lr": 1e-2,
+        "num_reloads": 100,
+        "load_size": 10000,
     }
 
-    # weight_fn = sde_cell_model.weight_function_gaussian(x0, 1.)
     drift, diffusion = sde_cell_model.vector_fields()
     data_fn = sde_cell_model.data_reverse(sde["y"], sde["T"], sde["N"])
 
@@ -62,37 +48,15 @@ def main(key, n=2, T=3.0):
     t_shape = jnp.empty(shape=(1, 1))
     model_init_sizes = (x_shape, t_shape)
 
-    (data_key, dataloader_key, train_key) = jr.split(key, 3)
-    data_key = jr.split(data_key, 1)
+    (loop_key, train_key) = jr.split(key, 2)
 
-    train_step, params, opt_state = train_utils.create_train_step_reverse(
+    train_step, params, opt_state, batch_stats = train_utils.create_train_step_reverse(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
-    # training
-    batches_per_epoch = max(training["load_size"] // training["batch_size"], 1)
-
-    print("Training")
-
-    for load in range(training["num_reloads"]):
-        # load data
-        data_key = jr.split(data_key[0], training["load_size"])
-        data = data_fn(data_key)
-        infinite_dataloader = dataloader(data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0])
-
-        for epoch in range(training["epochs_per_load"]):
-            total_loss = 0
-            for batch, (ts, reverse, correction) in zip(range(batches_per_epoch), infinite_dataloader):
-                params, opt_state, _loss = train_step(params, opt_state, ts, reverse, correction)
-                total_loss = total_loss + _loss
-            epoch_loss = total_loss / batches_per_epoch
-
-            actual_epoch = load * training["epochs_per_load"] + epoch
-            print(f"Epoch: {actual_epoch}, Loss: {epoch_loss}")
-
-            last_epoch = load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
-            if actual_epoch % 100 == 0 or last_epoch:
-                _save(params, opt_state)
+    train_loop.train(
+        loop_key, training, data_fn, train_step, params, batch_stats, opt_state, sde, network, checkpoint_path
+    )
 
 
 if __name__ == "__main__":

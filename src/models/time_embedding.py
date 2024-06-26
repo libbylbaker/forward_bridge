@@ -5,13 +5,8 @@ import jax
 import jax.numpy as jnp
 
 
-def get_time_embedding(
-    embedding_dim: int, max_period: float = 128.0, scaling: float = 100.0
-):
-    div_term = jnp.exp(
-        jnp.arange(0, embedding_dim, 2, dtype=jnp.float32)
-        * (-math.log(max_period) / embedding_dim)
-    )
+def get_time_embedding(embedding_dim: int, max_period: float = 10000.0, scaling: float = 100.0):
+    div_term = jnp.exp(jnp.arange(0, embedding_dim, 2, dtype=jnp.float32) * (-math.log(max_period) / embedding_dim))
 
     def time_embedding(t: float) -> jnp.ndarray:
         """Embed scalar time steps into a vector of size `embedding_dim`"""
