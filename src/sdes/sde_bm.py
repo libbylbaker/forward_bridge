@@ -3,7 +3,7 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 
-from doobs_score_matching.src.sdes import sde_utils, time
+from src.sdes import sde_utils, time
 
 
 def data_forward(x0, T, N):
