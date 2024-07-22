@@ -2,7 +2,7 @@ import diffrax
 import jax
 import jax.numpy as jnp
 
-from src.sdes import guided_process, time
+from src.sdes import time
 
 
 def data_forward(x0, T, N, vector_fields, bm_shape=None):
@@ -56,26 +56,6 @@ def data_reverse_weighted(y, T, N, vector_fields_reverse_and_correction, weight_
     return data
 
 
-def data_reverse_guided(x0, y, T, N, vector_fields_reverse_and_correction_guided):
-    x0 = jnp.asarray(x0)
-    y = jnp.asarray(y)
-    ts = time.grid(t_start=0, T=T, N=N)
-    ts_reverse = time.reverse(T, ts)
-    start_val = jnp.append(y, 1.0)
-
-    guided_drift, guided_diffusion = vector_fields_reverse_and_correction_guided
-
-    @jax.jit
-    @jax.vmap
-    def data(key):
-        reverse_and_correction = solution(key, ts_reverse, start_val, guided_drift, guided_diffusion, y.shape)
-        reverse = reverse_and_correction[:, :-1]
-        correction = reverse_and_correction[:, -1]
-        return ts[..., None], reverse, correction
-
-    return data
-
-
 def weight_function_gaussian(x0, inverse_covariance):
     x0 = jnp.asarray(x0)
 
@@ -84,32 +64,6 @@ def weight_function_gaussian(x0, inverse_covariance):
         return jnp.exp(-0.5 * (YT - x0).T @ jnp.linalg.solve(inverse_covariance, (YT - x0)))
 
     return gaussian_distance
-
-
-def vector_fields_reverse_and_correction_guided(
-    x0, T, vector_fields_reverse, drift_correction, reverse_guided_auxiliary
-):
-    reverse_drift, reverse_diffusion = vector_fields_reverse
-    B_auxiliary, beta_auxiliary, sigma_auxiliary = reverse_guided_auxiliary
-    guide_fn = guided_process.get_guide_fn(0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary)
-    guided_drift, _ = guided_process.vector_fields_guided(reverse_drift, reverse_diffusion, guide_fn)
-
-    def drift(t, x):
-        reverse = x[:-1]
-        correction = x[-1, None]
-        d_reverse = guided_drift(t, reverse)
-        d_correction = drift_correction(t, reverse, correction)
-        return jnp.concatenate([d_reverse, d_correction])
-
-    def diffusion(t, x):
-        reverse = x[:-1]
-        correction = x[-1]
-        d_reverse = reverse_diffusion(t, reverse)
-        d_correction = -guide_fn(t, reverse).T @ reverse_diffusion(t, reverse) * correction
-        diff = jnp.vstack((d_reverse, d_correction))
-        return diff
-
-    return drift, diffusion
 
 
 def conditioned(key, ts, x0, score_fn, drift, diffusion, bm_shape=None):
@@ -168,58 +122,6 @@ def solution(key, ts, x0, drift, diffusion, bm_shape=None):
     init = (key, ts[0], x0)
     _, x_all = jax.lax.scan(step_fun, xs=jnp.diff(ts), init=init)
     return jnp.concatenate([x0[None], x_all], axis=0)
-
-
-def important_reverse_and_correction(key, ts, x0, y, reverse_vector_fields, vector_fields, correction_drift):
-    reverse_drift, reverse_diffusion = reverse_vector_fields
-    f_drift, f_diffusion = vector_fields
-
-    y = jnp.asarray(y)
-    x0 = jnp.asarray(x0)
-    assert y.ndim == 1
-    assert x0.ndim == 1
-    rev_corr = jnp.append(y, 1.0)
-
-    # def h(t, x, *args):
-    #     T = ts[-1]
-    #     assert x.ndim == 1
-    #     zero_array = jnp.zeros(shape=(x.size,))
-    #     return jax.lax.cond(t == T, lambda f: zero_array, lambda f: -(x0 - f) / (T - t), x)
-
-    def h(t, x, *args):
-        rev_d = reverse_drift(t, x)
-        fw_d = f_drift(t, x)
-        rev_diff = reverse_diffusion(t, x)
-        return rev_d - fw_d
-
-    def drift_reverse(t, rev, corr, *args):
-        return reverse_drift(t, rev) - reverse_diffusion(t, rev) @ h(t, rev)
-
-    def drift_correction(t, rev, corr, *args):
-        return correction_drift(t, rev, corr)
-
-    def diffusion_correction(t, rev, corr, *args):
-        h_transpose = h(t, rev)[..., None].T
-        return h_transpose * corr
-
-    def _drift(t, x, *args):
-        rev = x[:-1]
-        corr = x[-1][..., None]
-        reverse_next = drift_reverse(t, rev, corr)
-        corr_next = drift_correction(t, rev, corr)
-        return jnp.concatenate([reverse_next, corr_next])
-
-    def _diffusion(t, x, *args):
-        rev = x[:-1]
-        corr = x[-1][..., None]
-        reverse_next = reverse_diffusion(t, rev)
-        corr_next = diffusion_correction(t, rev, corr)
-        top_block_zeros = jnp.zeros(shape=(reverse_next.shape[0], corr_next.shape[1]))
-        bottom_block_zeros = jnp.zeros(shape=(corr_next.shape[0], reverse_next.shape[1]))
-        return jnp.block([[reverse_next, top_block_zeros], [corr_next, bottom_block_zeros]])
-
-    sol = solution(key, ts, x0=rev_corr, drift=_drift, diffusion=_diffusion, bm_shape=(2 * y.size,))
-    return sol
 
 
 def solution_ode(ts, x0, drift):
