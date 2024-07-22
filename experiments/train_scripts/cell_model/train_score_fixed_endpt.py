@@ -12,7 +12,7 @@ seed = 1
 
 
 def main(key, T=2.0):
-    sde = {"N": 50, "dim": 2, "T": T, "y": [10.0, 0.0]}
+    sde = {"N": 50, "dim": 2, "T": T, "y": [1.5, 0.2]}
     dt = sde["T"] / sde["N"]
 
     y = sde["y"]

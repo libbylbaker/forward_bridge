@@ -60,8 +60,8 @@ if __name__ == "__main__":
     import os.path
 
     seeds = [1, 2, 3, 4, 5]
-    dims = jnp.arange(1, 16)
-    Ts = jnp.arange(1, 33)
+    dims = jnp.arange(1, 33)
+    Ts = jnp.arange(1, 16)
     for seed in seeds:
         main_key = jr.PRNGKey(seed)
 
