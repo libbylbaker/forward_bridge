@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from src import plotting
 from src.models.score_mlp import ScoreMLP
 from src.sdes import sde_interest_rates as ir
-from src.training import utils
+from src.training import train_utils
 from src.training.data_loader import dataloader
 
 seed = 1

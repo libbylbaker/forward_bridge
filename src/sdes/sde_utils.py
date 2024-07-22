@@ -170,18 +170,27 @@ def solution(key, ts, x0, drift, diffusion, bm_shape=None):
     return jnp.concatenate([x0[None], x_all], axis=0)
 
 
-def important_reverse_and_correction(key, ts, x0, y, reverse_drift, reverse_diffusion, correction_drift):
+def important_reverse_and_correction(key, ts, x0, y, reverse_vector_fields, vector_fields, correction_drift):
+    reverse_drift, reverse_diffusion = reverse_vector_fields
+    f_drift, f_diffusion = vector_fields
+
     y = jnp.asarray(y)
     x0 = jnp.asarray(x0)
     assert y.ndim == 1
     assert x0.ndim == 1
     rev_corr = jnp.append(y, 1.0)
 
+    # def h(t, x, *args):
+    #     T = ts[-1]
+    #     assert x.ndim == 1
+    #     zero_array = jnp.zeros(shape=(x.size,))
+    #     return jax.lax.cond(t == T, lambda f: zero_array, lambda f: -(x0 - f) / (T - t), x)
+
     def h(t, x, *args):
-        T = ts[-1]
-        assert x.ndim == 1
-        zero_array = jnp.zeros(shape=(x.size,))
-        return jax.lax.cond(t == T, lambda f: zero_array, lambda f: -(x0 - f) / (T - t), x)
+        rev_d = reverse_drift(t, x)
+        fw_d = f_drift(t, x)
+        rev_diff = reverse_diffusion(t, x)
+        return rev_d - fw_d
 
     def drift_reverse(t, rev, corr, *args):
         return reverse_drift(t, rev) - reverse_diffusion(t, rev) @ h(t, rev)

@@ -7,15 +7,15 @@ import matplotlib.pyplot as plt
 from src import plotting
 from src.models.score_mlp import ScoreMLP
 from src.sdes import sde_interest_rates as ir
-from src.training import utils
+from src.training import train_loop, train_utils
 from src.training.data_loader import dataloader
 
 seed = 1
 
 sde = {"x0": (1.0,), "N": 1000, "dim": 1, "T": 1.0, "y": (1.5,)}
 
-score_fn = utils.get_score(drift=ir.drift, diffusion=ir.diffusion)
-train_step = utils.create_train_step_reverse(score_fn)
+score_fn = train_utils.get_score(drift=ir.drift, diffusion=ir.diffusion)
+train_step = train_utils.create_train_step_reverse(score_fn)
 data_fn = ir.data_importance(sde["x0"], sde["y"], sde["T"], sde["N"])
 
 network = {

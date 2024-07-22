@@ -15,7 +15,6 @@ def data_forward(x0, T, N):
 def data_importance(x0, y, T, N):
     ts = time.grid(t_start=0, T=T, N=N)
     time_reverse = time.reverse(T=T, times=ts)
-    drift, diffusion = vector_fields_reverse()
 
     @jax.jit
     @jax.vmap
@@ -26,7 +25,7 @@ def data_importance(x0, y, T, N):
         correction process: float, correction process at time T
         """
         reverse_and_correction_ = sde_utils.important_reverse_and_correction(
-            key, time_reverse, x0, y, drift, diffusion, correction_drift
+            key, time_reverse, x0, y, vector_fields_reverse(), vector_fields(), correction_drift
         )
         reverse_ = reverse_and_correction_[:, :-1]
         correction_ = reverse_and_correction_[-1, -1]
