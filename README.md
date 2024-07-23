@@ -12,7 +12,7 @@ pip install .
 Alternatively, to run examples and tests too, install everything with the following command:
 
 ```bash
-pip install 'forwardbridge[full]'
+pip install '.[full]'
 ```
 
 ## Usage
@@ -22,24 +22,20 @@ For these the drift and diffusion of the SDEs are already defined, for both the 
 The adjoint SDE can be used to with the train loop in `src.training` to learn the score function for the SDE.
 For examples see the `experiments` directory, particularly `train_scripts`.
 
-[//]: # (## Citation)
+## Citation
 
-[//]: # ()
-[//]: # (Please cite our article as follows)
 
-[//]: # ()
-[//]: # (```bibtex)
+Please cite our article as follows
 
-[//]: # (@article{baker2024scorematching,)
 
-[//]: # (      title={Score matching for bridges without time-reversals},)
+```bibtex
 
-[//]: # (      author={Elizabeth Louise Baker and Moritz Schauer and Stefan Sommer},)
+@misc{baker2024scorematchingbridges,
+      title={Score matching for bridges without time-reversals},
+      author={Elizabeth L. Baker and Moritz Schauer and Stefan Sommer},
+      year={2024},
+      eprint={2407.15455},
+      url={https://arxiv.org/abs/2407.15455},
+}
 
-[//]: # (      year={2024},)
-
-[//]: # (      eprint={},)
-
-[//]: # (})
-
-[//]: # (```)
+```
