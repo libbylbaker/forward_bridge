@@ -1,5 +1,3 @@
-from functools import partial
-
 import jax
 import jax.numpy as jnp
 from flax import linen as nn
@@ -18,7 +16,6 @@ class ScoreMLP(nn.Module):
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, t: jnp.ndarray, train: bool) -> jnp.ndarray:
-        # assert len(x.shape) == len(t.shape) == 2
         time_embedding = get_time_embedding(self.time_embedding_dim)
         t = jax.vmap(time_embedding, in_axes=0)(t)
         t = MLP(

@@ -14,7 +14,8 @@ def test_reverse():
     assert drift_.shape == x.shape
 
     diffusion_ = diffusion(t, x)
-    assert diffusion_.shape == (6, 6)
+    grid_size = sde_kunita.GRID_SIZE
+    assert diffusion_.shape == (6, 2 * grid_size**2)
 
 
 def test_drift_correction():
@@ -22,4 +23,4 @@ def test_drift_correction():
     corr = 1.0
     rev = jnp.array([[1.0, 2.0], [3, 4], [5, 6]])
     drift_correction = sde_kunita.drift_correction(t, rev, corr)
-    assert drift_correction.shape == (1,)
+    assert drift_correction.shape == ()

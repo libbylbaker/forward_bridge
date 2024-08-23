@@ -63,20 +63,36 @@ def vector_fields(grid_range=(-2, 2), dim=2, eps=1e-10):
     return drift, diffusion
 
 
+def partial_derivatives_by_row(t, x):
+    """Computes matrix A_ij = d/dx_i k(x_i, y_j)"""
+    forward_drift, forward_diffusion = vector_fields()
+    identity = jnp.identity(x.size)
+
+    def diffusion_row(y, row_i: int):
+        """Computes sigm, i.e. the ith row of the diffusion matrix"""
+        return forward_diffusion(t, y)[row_i, :]
+
+    rows = jnp.arange(0, x.size)
+
+    def partial_derivative_per_row(i):
+        dxi = identity[i, :]
+        diffusion_i = lambda y: diffusion_row(y, i)
+        _diff, d_diff = jax.jvp(diffusion_i, (x,), (dxi,))
+        return d_diff
+
+    matrix = jax.vmap(partial_derivative_per_row)(rows)
+    return matrix
+
+
 def vector_fields_reverse():
     forward_drift, forward_diffusion = vector_fields()
 
-    def drift(t, x, *args):
-        assert x.ndim == 1
-        covariance = lambda y: forward_diffusion(t, y) @ forward_diffusion(t, y).T
-        columns = jnp.arange(0, x.size)
-        identity = jnp.identity(x.size)
-
-        def jac_column(col_i):
-            return jax.jvp(covariance, (x,), (identity[:, col_i],))[1][:, col_i]
-
-        matrix = jax.vmap(jac_column)(columns)
-        return 0.5 * matrix @ jnp.ones_like(x)
+    def drift(t, x, partials=None):
+        if partials is None:
+            partials = partial_derivatives_by_row(t, x)
+        kernel_matrix = forward_diffusion(t, x)
+        sum_of_partials = partials.sum(axis=0)
+        return kernel_matrix @ sum_of_partials
 
     def diffusion(t, x, *args):
         return forward_diffusion(t, x)
@@ -85,16 +101,17 @@ def vector_fields_reverse():
 
 
 def vector_fields_reverse_and_correction():
+    reverse_drift, reverse_diffusion = vector_fields_reverse()
+
     def drift(t, x, *args):
         assert x.ndim == 1
-        reverse_drift, _ = vector_fields_reverse()
-        reverse = reverse_drift(t, x[:-1])
-        correct = drift_correction(t, x[:-1], x[-1, None])
+        partials = partial_derivatives_by_row(t, x[:-1])
+        reverse = reverse_drift(t, x[:-1], partials=partials)
+        correct = drift_correction(t, x[:-1], x[-1, None], partials=partials)
         return jnp.concatenate([reverse, correct])
 
     def diffusion(t, x, *args):
         assert x.ndim == 1
-        _, reverse_diffusion = vector_fields_reverse()
         rev_diffusion = reverse_diffusion(t, x[:-1])
         rev_corr_diff = jnp.pad(rev_diffusion, ((0, 1), (0, 1)), mode="constant", constant_values=0.0)
         return rev_corr_diff
@@ -102,11 +119,12 @@ def vector_fields_reverse_and_correction():
     return drift, diffusion
 
 
-def drift_correction(t, rev, corr, *args):
-    _, diffusion = vector_fields()
-    covariance = lambda x: diffusion(t, x) @ diffusion(t, x).T
-    c = hessian(covariance)(rev)
-    c = 0.5 * jnp.sum(c)
+def drift_correction(t, rev, corr, partials=None):
+    if partials is None:
+        partials = partial_derivatives_by_row(t, rev)
+    sum_rows = jnp.sum(partials, axis=0)
+    total_sum = sum_rows @ sum_rows.T
+    c = 0.5 * total_sum
     return c * corr
 
 
@@ -127,7 +145,3 @@ def gaussian_kernel_2d(alpha: float, sigma: float) -> callable:
         return alpha * jnp.exp(-0.5 * jnp.sum(jnp.square(x - y), axis=-1) / (sigma**2))
 
     return k
-
-
-def hessian(f):
-    return jax.jacfwd(jax.jacrev(f))

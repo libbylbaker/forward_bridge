@@ -1,7 +1,7 @@
 import jax.numpy
 import jax.numpy as jnp
 
-from src.sdes import guided_process, sde_utils, time
+from src.sdes import sde_utils, time
 
 C = 1
 
@@ -16,29 +16,6 @@ def data_forward(x0, T, N):
         correction_ = 1.0
         forward_ = sde_utils.solution(key, ts, x0=x0, drift=drift, diffusion=diffusion)
         return ts[..., None], forward_, jnp.asarray(correction_)
-
-    return data
-
-
-def data_importance(x0, y, T, N):
-    ts = time.grid(t_start=0, T=T, N=N)
-    time_reverse = time.reverse(T=T, times=ts)
-    drift, diffusion = vector_fields_reverse()
-
-    @jax.jit
-    @jax.vmap
-    def data(key):
-        """
-        :return: ts,
-        reverse process: (t, dim), where t is the number of time steps and dim the dimension of the SDE
-        correction process: float, correction process at time T
-        """
-        reverse_and_correction_ = sde_utils.important_reverse_and_correction(
-            key, time_reverse, x0, y, drift, diffusion, correction_drift
-        )
-        reverse_ = reverse_and_correction_[:, :-1]
-        correction_ = reverse_and_correction_[-1, -1]
-        return ts[..., None], reverse_, jnp.asarray(correction_)
 
     return data
 
@@ -62,26 +39,6 @@ def data_reverse(y, T, N):
         reverse_and_correction_ = sde_utils.solution(key, ts_reverse, x0=start_val, drift=drift, diffusion=diffusion)
         reverse_ = reverse_and_correction_[:, :-1]
         correction_ = reverse_and_correction_[-1, -1]
-        return ts[..., None], reverse_, jnp.asarray(correction_)
-
-    return data
-
-
-def data_reverse_guided(x0, y, T, N):
-    x0 = jnp.asarray(x0)
-    y = jnp.asarray(y)
-    ts = time.grid(t_start=0, T=T, N=N)
-    ts_reverse = time.reverse(T, ts)
-    reverse_drift, reverse_diffusion = vector_fields_reverse()
-    B_auxiliary, beta_auxiliary, sigma_auxiliary = reverse_guided_auxiliary(len(x0), y)
-    guide_fn = guided_process.get_guide_fn(0.0, T, x0, sigma_auxiliary, B_auxiliary, beta_auxiliary)
-    guided_drift, guided_diffusion = guided_process.vector_fields_guided(reverse_drift, reverse_diffusion, guide_fn)
-
-    @jax.jit
-    @jax.vmap
-    def data(key):
-        reverse_ = sde_utils.solution(key, ts_reverse, y, guided_drift, guided_diffusion)
-        correction_ = (1.0,)
         return ts[..., None], reverse_, jnp.asarray(correction_)
 
     return data
@@ -131,16 +88,3 @@ def vector_fields_reverse_and_correction():
 
 def correction_drift(t, rev, corr, *args):
     return 1.0 * corr
-
-
-def reverse_guided_auxiliary(dim, y, T=1.0):
-    def B_auxiliary(t):
-        return jnp.identity(dim)
-
-    def beta_auxiliary(t):
-        return jnp.zeros(dim)
-
-    def sigma_auxiliary(t):
-        return (T - t) / C * jnp.identity(dim)
-
-    return B_auxiliary, beta_auxiliary, sigma_auxiliary

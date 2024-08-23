@@ -18,9 +18,9 @@ classifiers = [
 ]
 
 dependencies = [
-#    "jax[cpu]",
     "flax",
     "orbax",
+    "optax",
 ]
 
 [project.optional-dependencies]

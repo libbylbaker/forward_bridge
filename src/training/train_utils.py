@@ -50,27 +50,31 @@ def create_train_step_forward(key, model, optimiser, *model_init_sizes, dt, scor
 
 
 def create_train_step_variable_y(key, model, optimiser, *model_init_sizes, dt, score):
-    init_params = model.init(key, *model_init_sizes, train=True)
+    variables = model.init(key, *model_init_sizes, train=True)
+    batch_stats = variables["batch_stats"] if "batch_stats" in variables else {}
+    init_params = variables["params"]
     init_opt_state = optimiser.init(init_params)
 
     @jax.jit
-    def train_step(params, opt_state, times, trajectory, correction, y):
+    def train_step(params, batch_stats, opt_state, times, trajectory, correction, y):
         y = jnp.repeat(y, (trajectory.shape[1] - 1), axis=0)
         t, traj, correction, true_score = _data_setup(times, trajectory, correction, score)
 
         def loss_fn(params_):
-            prediction = model.apply(params_, traj, y, t, train=True)
+            prediction, updates = model.apply(
+                {"params": params_, "batch_stats": batch_stats}, traj, y, t, train=True, mutable=["batch_stats"]
+            )
             loss = dt * jnp.mean(jnp.square(true_score - prediction) * correction)
-            # loss = dt * jnp.mean(jnp.square(true_score - prediction))
-            return loss
+            return loss, updates
 
-        grad_fn = jax.value_and_grad(loss_fn)
-        _loss, grads = grad_fn(params)
-        updates, opt_state = optimiser.update(grads, opt_state, params)
-        params = optax.apply_updates(params, updates)
-        return params, opt_state, _loss
+        grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
+        (_loss, updates), grads = grad_fn(params)
+        opt_updates, opt_state = optimiser.update(grads, opt_state, params)
+        params = optax.apply_updates(params, opt_updates)
+        batch_stats = updates["batch_stats"]
+        return params, batch_stats, opt_state, _loss
 
-    return train_step, init_params, init_opt_state
+    return train_step, init_params, init_opt_state, batch_stats
 
 
 def _create_train_step(key, model, optimiser, *model_init_sizes, dt, score, data_setup):

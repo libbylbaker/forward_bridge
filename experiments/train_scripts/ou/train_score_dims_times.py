@@ -1,3 +1,5 @@
+import os.path
+
 import jax.numpy as jnp
 import jax.random as jr
 import optax
@@ -57,7 +59,7 @@ def main(key, checkpt_path, dim=1, T=1.0):
 if __name__ == "__main__":
     import os.path
 
-    seeds = [1]
+    seeds = [1, 2, 3, 4, 5]
     dims = jnp.arange(1, 33)
     Ts = jnp.arange(1, 16)
     for seed in seeds:

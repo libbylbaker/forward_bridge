@@ -1,12 +1,10 @@
-import math
-from functools import partial
-from typing import Any, Callable, Sequence
+from typing import Callable, Sequence
 
 import jax
 import jax.numpy as jnp
 from flax import linen as nn
 
-from src.models.time_embedding import get_time_embedding, TimeEmbeddingMLP
+from src.models.time_embedding import TimeEmbeddingMLP, get_time_embedding
 
 
 class ScoreUNet(nn.Module):
@@ -20,13 +18,11 @@ class ScoreUNet(nn.Module):
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, t: jnp.ndarray, train: bool) -> jnp.ndarray:
-        assert (
-            self.encoder_layer_dims[-1] == self.decoder_layer_dims[0]
-        ), "Bottleneck dim does not match"
+        assert self.encoder_layer_dims[-1] == self.decoder_layer_dims[0], "Bottleneck dim does not match"
         x_init = x
         time_embedding = get_time_embedding(self.time_embedding_dim)
         t = jax.vmap(time_embedding, in_axes=0)(t)
-        x = x.reshape((x.shape[0], -1))         # !!! Flatten happens here
+        x = x.reshape((x.shape[0], -1))  # !!! Flatten happens here
         x = InputDense(self.init_embedding_dim, self.activation)(x)
 
         # downsample
@@ -64,9 +60,7 @@ class Upsample(nn.Module):
     batch_norm: bool = True
 
     @nn.compact
-    def __call__(
-        self, x: jnp.ndarray, x_skip: jnp.ndarray, t_emb: jnp.ndarray, train: bool
-    ) -> jnp.ndarray:
+    def __call__(self, x: jnp.ndarray, x_skip: jnp.ndarray, t_emb: jnp.ndarray, train: bool) -> jnp.ndarray:
         x_in = jnp.concatenate([x, x_skip], axis=-1)
         input_dim = x_in.shape[-1]
 

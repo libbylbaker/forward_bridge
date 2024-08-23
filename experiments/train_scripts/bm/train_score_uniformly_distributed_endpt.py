@@ -22,7 +22,7 @@ def main(key):
     sde = {"N": 100, "dim": 2, "T": 1.0}
     dt = sde["T"] / sde["N"]
 
-    checkpoint_path = os.path.abspath(f"../../checkpoints/bm/circle_uniformly_distributed_endpt_r_{r}_1_epoch")
+    checkpoint_path = os.path.abspath(f"../../checkpoints/bm/circle_uniformly_distributed_endpt_r_{r}")
 
     network = {
         "output_dim": sde["dim"],

@@ -1,9 +1,7 @@
-import functools
-
 import jax
 import jax.numpy as jnp
 
-from src.sdes import guided_process, sde_utils, time
+from src.sdes import sde_utils, time
 
 # Constants that are always the same but can be changed in the future
 
@@ -13,14 +11,6 @@ _SIGMA = 1.0
 
 def data_forward(x0, T, N):
     return sde_utils.data_forward(x0, T, N, vector_fields())
-
-
-def data_reverse_guided(x0, y, T, N):
-    x0 = jnp.asarray(x0)
-    vf_reverse = vector_fields_reverse()
-    vf_aux = reverse_guided_auxiliary(x0.size)
-    vf_guided = sde_utils.vector_fields_reverse_and_correction_guided(x0, T, vf_reverse, drift_correction, vf_aux)
-    return sde_utils.data_reverse_guided(x0, y, T, N, vf_guided)
 
 
 def data_reverse(y, T, N):
@@ -111,19 +101,6 @@ def vector_fields_reverse_and_correction():
 def drift_correction(t, rev, corr, *args):
     assert corr.ndim == 1
     return 1.0 * corr
-
-
-def reverse_guided_auxiliary(dim):
-    def B_auxiliary(t):
-        return _ALPHA * jnp.identity(dim)
-
-    def beta_auxiliary(t):
-        return jnp.zeros(dim)
-
-    def sigma_auxiliary(t):
-        return _SIGMA * jnp.identity(dim)
-
-    return B_auxiliary, beta_auxiliary, sigma_auxiliary
 
 
 def score(t, x, T, y):

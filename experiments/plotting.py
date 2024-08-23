@@ -10,7 +10,7 @@ from src.training import train_utils
 def load_checkpoint_wo_batch_stats(checkpoint_path):
     orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
     restored = orbax_checkpointer.restore(checkpoint_path)
-    model = src.models.score_mlp.ScoreMLP(**restored["network"])
+    model = src.models.ScoreMLP(**restored["network"])
     params = restored["params"]["params"]
     batch_stats = {}
     trained_score = train_utils.trained_score(model, params, batch_stats)
@@ -20,7 +20,17 @@ def load_checkpoint_wo_batch_stats(checkpoint_path):
 def load_checkpoint_w_batch_stats(checkpoint_path):
     orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
     restored = orbax_checkpointer.restore(checkpoint_path)
-    model = src.models.score_mlp.ScoreMLP(**restored["network"])
+    model = src.models.ScoreMLP(**restored["network"])
+    params = restored["params"]
+    batch_stats = restored["batch_stats"]
+    trained_score = train_utils.trained_score(model, params, batch_stats)
+    return trained_score, restored
+
+
+def checkpoint_unet(checkpoint_path):
+    orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+    restored = orbax_checkpointer.restore(checkpoint_path)
+    model = src.models.ScoreUNet(**restored["network"])
     params = restored["params"]
     batch_stats = restored["batch_stats"]
     trained_score = train_utils.trained_score(model, params, batch_stats)

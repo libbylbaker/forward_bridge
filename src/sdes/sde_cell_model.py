@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 
-from src.sdes import guided_process, sde_utils, time
+from src.sdes import sde_utils, time
 
 alpha = 1 / 16
 sigma = 0.1
@@ -20,14 +20,6 @@ def data_reverse(
 
 def data_reverse_weighted(y, T, N, weight_fn):
     return sde_utils.data_reverse_weighted(y, T, N, vector_fields_reverse_and_correction(), weight_fn)
-
-
-def data_reverse_guided(x0, y, T, N):
-    x0 = jnp.asarray(x0)
-    vf_reverse = vector_fields_reverse()
-    vf_aux = reverse_guided_auxiliary(x0.size)
-    vf_guided = sde_utils.vector_fields_reverse_and_correction_guided(x0, T, vf_reverse, drift_correction, vf_aux)
-    return sde_utils.data_reverse_guided(x0, y, T, N, vf_guided)
 
 
 def vector_fields():

@@ -1,16 +1,7 @@
-import jax.numpy as jnp
 import jax.random as jr
 import pytest
 
-from src.sdes import (
-    sde_bm,
-    sde_cell_model,
-    sde_interest_rates,
-    sde_ornstein_uhlenbeck,
-    sde_time_dependent,
-    sde_utils,
-    time,
-)
+from src.sdes import sde_bm, sde_cell_model, sde_ornstein_uhlenbeck, sde_time_dependent, time
 
 
 @pytest.fixture
@@ -41,7 +32,6 @@ class TestDataForward:
         "data_forward",
         [
             sde_ornstein_uhlenbeck.data_forward,
-            sde_interest_rates.data_forward,
             sde_bm.data_forward,
             sde_time_dependent.data_forward,
         ],
@@ -61,7 +51,6 @@ class TestDataForward:
         "data_forward",
         [
             sde_ornstein_uhlenbeck.data_forward,
-            sde_interest_rates.data_forward,
             sde_bm.data_forward,
             sde_time_dependent.data_forward,
             sde_cell_model.data_forward,
@@ -85,7 +74,6 @@ class TestDataReverse:
         "data_reverse",
         [
             sde_ornstein_uhlenbeck.data_reverse,
-            sde_interest_rates.data_reverse,
             sde_bm.data_reverse,
             sde_time_dependent.data_reverse,
         ],
@@ -105,7 +93,6 @@ class TestDataReverse:
         "data_reverse",
         [
             sde_ornstein_uhlenbeck.data_reverse,
-            sde_interest_rates.data_reverse,
             sde_bm.data_reverse,
             sde_time_dependent.data_reverse,
             sde_cell_model.data_reverse,
@@ -124,51 +111,10 @@ class TestDataReverse:
         assert reverse[:, 0, 1].all() == y[1]
 
 
-# class TestDataImportance:
-#     @pytest.mark.parametrize(
-#         "data_importance",
-#         [
-#             sde_ornstein_uhlenbeck.data_reverse_importance,
-#             sde_interest_rates.data_importance,
-#         ],
-#     )
-#     def test_data_importance_1d(self, data_importance, keys):
-#         x0 = (1.0,)
-#         y = (1.0,)
-#         T = 1.0
-#         N = 100
-#         data = data_importance(x0, y, T, N)
-#         ts, reverse, correction = data(keys)
-#         assert ts.shape == (5, 100, 1)
-#         assert reverse.shape == (5, 100, 1)
-#         assert correction.shape == (5,)
-#         assert reverse[:, 0, 0].all() == x0[0]
-#
-#     @pytest.mark.parametrize(
-#         "data_importance",
-#         [
-#             sde_ornstein_uhlenbeck.data_reverse_importance,
-#             sde_interest_rates.data_importance,
-#         ],
-#     )
-#     def test_data_importance_2d(self, data_importance, keys):
-#         x0 = (1.0, 1.0)
-#         y = (1.0, 1.0)
-#         T = 1.0
-#         N = 100
-#         data = data_importance(x0, y, T, N)
-#         ts, reverse, correction = data(keys)
-#         assert ts.shape == (5, 100, 1)
-#         assert reverse.shape == (5, 100, 2)
-#         assert correction.shape == (5,)
-#         assert reverse[:, 0, 0].all() == x0[0]
-#         assert reverse[:, 0, 1].all() == x0[1]
-
-
 class TestScores:
     @pytest.mark.parametrize(
         "score_fn",
-        [sde_ornstein_uhlenbeck.score, sde_interest_rates.score, sde_bm.score],
+        [sde_ornstein_uhlenbeck.score, sde_bm.score],
     )
     def test_score_1d(self, score_fn):
         t = 0.0
