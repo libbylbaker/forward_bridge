@@ -18,7 +18,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "jax[cpu]",
+#    "jax[cpu]",
     "flax",
     "orbax",
 ]

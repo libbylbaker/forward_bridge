@@ -229,17 +229,17 @@ def solution_ode(ts, x0, drift):
     return sol.ys
 
 
-def solution_ode_dense(t0, t1, x0, drift):
-    terms = diffrax.ODETerm(drift)
-    solver = diffrax.Dopri5()
-    saveat = diffrax.SaveAt(dense=True)
-    sol = diffrax.diffeqsolve(
-        terms,
-        solver,
-        t0=t0,
-        t1=t1,
-        dt0=0.05,
-        y0=x0,
-        saveat=saveat,
-    )
-    return sol
+# def solution_ode_dense(t0, t1, x0, drift):
+#     terms = diffrax.ODETerm(drift)
+#     solver = diffrax.Dopri5()
+#     saveat = diffrax.SaveAt(dense=True)
+#     sol = diffrax.diffeqsolve(
+#         terms,
+#         solver,
+#         t0=t0,
+#         t1=t1,
+#         dt0=0.05,
+#         y0=x0,
+#         saveat=saveat,
+#     )
+#     return sol

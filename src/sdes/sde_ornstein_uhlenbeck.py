@@ -7,10 +7,7 @@ from src.sdes import guided_process, sde_utils, time
 
 # Constants that are always the same but can be changed in the future
 
-# _ALPHA = 1.0
-# _SIGMA = 1.0
-
-_ALPHA = -5.0
+_ALPHA = 1.0
 _SIGMA = 1.0
 
 

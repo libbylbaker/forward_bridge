@@ -4,18 +4,18 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-from src import data_boundary_pts
 from src.models.score_unet import ScoreUNet
 from src.sdes import sde_kunita
 from src.training import train_loop, train_utils
+from src import data_boundary_pts
 
 seed = 1
 
 
 def main(key, T=1.0):
-    num_landmarks = 5
+    num_landmarks = 16
 
-    y = data_boundary_pts.sample_circle(5)
+    y = data_boundary_pts.sample_circle(num_landmarks)
 
     sde = {"N": 100, "dim": y.size, "T": T, "y": y}
     dt = sde["T"] / sde["N"]
@@ -27,8 +27,8 @@ def main(key, T=1.0):
         "time_embedding_dim": 64,
         "init_embedding_dim": 64,
         "activation": "leaky_relu",
-        "encoder_layer_dims": [256, 128, 64],
-        "decoder_layer_dims": [64, 128, 256],
+        "encoder_layer_dims": [8*num_landmarks, 4*num_landmarks, 2*num_landmarks, num_landmarks],
+        "decoder_layer_dims": [num_landmarks, 2*num_landmarks, 4*num_landmarks, 8*num_landmarks],
         "batch_norm": True,
     }
 
@@ -36,7 +36,7 @@ def main(key, T=1.0):
         "batch_size": 64,
         "epochs_per_load": 1,
         "lr": 5e-3,
-        "num_reloads": 300,
+        "num_reloads": 3000,
         "load_size": 64,
     }
 

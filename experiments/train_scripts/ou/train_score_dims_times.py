@@ -15,7 +15,7 @@ def main(key, checkpt_path, dim=1, T=1.0):
 
     network = {
         "output_dim": sde["dim"],
-        "time_embedding_dim": 16,
+        "time_embedding_dim": 32,
         "init_embedding_dim": 16,
         "activation": "leaky_relu",
         "encoder_layer_dims": [16],
@@ -43,7 +43,7 @@ def main(key, checkpt_path, dim=1, T=1.0):
     t_shape = jnp.empty(shape=(1, 1))
     model_init_sizes = (x_shape, t_shape)
 
-    (loop_key, train_key) = jr.split(key, 3)
+    (loop_key, train_key) = jr.split(key, 2)
 
     train_step, params, opt_state, batch_stats = train_utils.create_train_step_reverse(
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
@@ -55,7 +55,9 @@ def main(key, checkpt_path, dim=1, T=1.0):
 
 
 if __name__ == "__main__":
-    seeds = [1, 2, 3]
+    import os.path
+
+    seeds = [1]
     dims = jnp.arange(1, 33)
     Ts = jnp.arange(1, 16)
     for seed in seeds:
@@ -63,10 +65,10 @@ if __name__ == "__main__":
 
         for dim in dims:
             T = 1.0
-            checkpoint_path = f"../../checkpoints/ou/{seed}/dim_{dim}_T_{T}"
+            checkpoint_path = os.path.abspath(f"../../checkpoints/ou/{seed}/dim_{dim}_T_{T}")
             main(main_key, checkpoint_path, dim=dim, T=T)
 
         for T in Ts:
             dim = 1
-            checkpoint_path = f"../../checkpoints/ou/{seed}/dim_{dim}_T_{T}"
+            checkpoint_path = os.path.abspath(f"../../checkpoints/ou/{seed}/dim_{dim}_T_{T}")
             main(main_key, checkpoint_path, dim=dim, T=T)
