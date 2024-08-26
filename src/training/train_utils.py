@@ -173,8 +173,9 @@ def get_score(drift, diffusion) -> Callable:
         dt = t1 - t0
         drift_last = drift(t0, X0)
         diffusion_last = diffusion(t0, X0)
-        inv_cov = invert(diffusion_last, diffusion_last.T)
-        _score = 1 / dt * inv_cov @ (X1 - X0 - dt * drift_last)
+        # inv_cov = invert(diffusion_last, diffusion_last.T)
+        # _score = 1 / dt * inv_cov @ (X1 - X0 - dt * drift_last)
+        _score = 1 / dt * (X1 - X0 - dt * drift_last)
         return _score
 
     return score
