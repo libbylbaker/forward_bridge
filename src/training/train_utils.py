@@ -98,7 +98,7 @@ def _create_train_step(key, model, optimiser, *model_init_sizes, dt, score, data
             sqrt_norm = prediction[:, None, :]@diffusion
             weighted_norm = sqrt_norm@jnp.moveaxis(sqrt_norm, -1, -2)
             diff_term = -2*prediction[:, None, :]@true_score[:, :, None]
-            loss = jnp.mean((weighted_norm + diff_term)*correction)
+            loss = jnp.mean((weighted_norm + diff_term))
             return loss, updates
 
 

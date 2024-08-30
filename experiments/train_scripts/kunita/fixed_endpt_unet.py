@@ -13,7 +13,7 @@ seed = 1
 
 
 def main(key, T=1.0):
-    num_landmarks = 16
+    num_landmarks = 200
 
     y = data_boundary_pts.sample_circle(num_landmarks)
 
@@ -33,11 +33,11 @@ def main(key, T=1.0):
     }
 
     training = {
-        "batch_size": 64,
-        "epochs_per_load": 1,
+        "batch_size": 100,
+        "load_size": 5000,
+        "num_reloads": 300,
         "lr": 5e-3,
-        "num_reloads": 3000,
-        "load_size": 64,
+        "epochs_per_load": 1,
     }
 
     drift, diffusion = sde_kunita.vector_fields()

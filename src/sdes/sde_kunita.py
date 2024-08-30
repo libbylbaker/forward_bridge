@@ -92,7 +92,7 @@ def vector_fields_reverse():
             partials = partial_derivatives_by_row(t, x)
         kernel_matrix = forward_diffusion(t, x)
         sum_of_partials = partials.sum(axis=0)
-        return kernel_matrix @ sum_of_partials
+        return 1/x.size*kernel_matrix @ sum_of_partials
 
     def diffusion(t, x, *args):
         return forward_diffusion(t, x)
