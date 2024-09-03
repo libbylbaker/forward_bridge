@@ -1,6 +1,29 @@
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+
+
+def plot_kunita_traj(n_landmarks, traj, ax_scale=0.1):
+    fig, ax = plt.subplots()
+    for landmark in jnp.arange(0, n_landmarks, 1):
+        x = traj[:, landmark, 0]
+        y = traj[:, landmark, 1]
+        N = len(x)
+        points = jnp.array([x, y]).T.reshape(-1, 1, 2)
+        segments = jnp.concatenate([points[:-1], points[1:]], axis=1)
+        plt.Normalize(0, N)
+        lc = LineCollection(segments, cmap="viridis")
+
+        lc.set_array(jnp.linspace(0, 1, N))
+        lc.set_linewidth(1)
+        ax.add_collection(lc)
+    # add color bar for time, with scale from 0 to 1
+    cbar = fig.colorbar(lc, ax=ax)
+    cbar.set_label("Time")
+    ax.set_xlim([traj[:, :, 0].min() - ax_scale, traj[:, :, 0].max() + ax_scale])
+    ax.set_ylim([traj[:, :, 1].min() - ax_scale, traj[:, :, 1].max() + ax_scale])
+    return fig, ax
 
 
 def visualise_data(data):
@@ -110,9 +133,7 @@ def plot_score_variable_y(true_score, learned_score, epoch):
     fig, axs = plt.subplots(nrows=1, ncols=t.size, sharey=True)
     fig.suptitle(f"Epoch: {epoch}")
     for col, ts in enumerate(t):
-        vectorised_learnt_score = jax.vmap(
-            jax.vmap(learned_score, in_axes=(None, 0, 0)), in_axes=(None, 0, 0)
-        )
+        vectorised_learnt_score = jax.vmap(jax.vmap(learned_score, in_axes=(None, 0, 0)), in_axes=(None, 0, 0))
         score_pred = vectorised_learnt_score(ts, x, y)
         pc = axs[col].pcolormesh(x.squeeze(), y.squeeze(), score_pred.squeeze())
         fig.colorbar(pc, ax=axs[col])
@@ -122,9 +143,7 @@ def plot_score_variable_y(true_score, learned_score, epoch):
     fig2, axs2 = plt.subplots(nrows=1, ncols=t.size, sharey=True)
     fig2.suptitle(f"Epoch: {epoch}")
     for col, ts in enumerate(t):
-        vectorised_score = jax.vmap(
-            jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0)
-        )
+        vectorised_score = jax.vmap(jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0))
         score_true = vectorised_score(ts, x.squeeze(), 1.0, y.squeeze())
         pc = axs2[col].pcolormesh(x.squeeze(), y.squeeze(), score_true.squeeze())
         fig2.colorbar(pc, ax=axs2[col])
