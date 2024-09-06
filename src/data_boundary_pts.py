@@ -37,24 +37,20 @@ def smiley_face_fns(num_eye, num_brow, num_mouth, num_outline):
         y = -((x + 1.4) ** 2 / 5 - 0.2)
         return jnp.stack([x, y], axis=1).flatten()
 
-
     def right_eye():
         x = np.linspace(0.6, 2.4, num_eye)
         y = -((x - 1.4) ** 2 / 5 - 0.2)
         return jnp.stack([x, y], axis=1).flatten()
-
 
     def left_brow():
         x = np.linspace(-3, -1, num_brow)
         y = -(((x + 1.5) / 2.6) ** 2) + 1.8
         return jnp.stack([x, y], axis=1).flatten()
 
-
     def right_brow():
         x = np.linspace(1, 3, num_brow)
         y = -(((x - 1.5) / 2.6) ** 2) + 1.8
         return jnp.stack([x, y], axis=1).flatten()
-
 
     def mouth():
         x = np.linspace(-1.3, 1.3, num_mouth)
@@ -69,3 +65,46 @@ def smiley_face_fns(num_eye, num_brow, num_mouth, num_outline):
         return jnp.stack([r * x, r * y], axis=1).flatten()
 
     return [left_eye, right_eye, left_brow, right_brow, mouth, outline]
+
+
+def pensive_face_fns(num_eye, num_brow, num_mouth, num_outline):
+    def left_eye():
+        x = np.linspace(-3, -0.6, num_eye)
+        y = (x + 1.8) ** 2 / 2.5 - 1.2
+        return jnp.stack([x, y], axis=1).flatten()
+
+    def right_eye():
+        x = np.linspace(0.6, 3, num_eye)
+        y = (x - 1.8) ** 2 / 2.5 - 1.2
+        return jnp.stack([x, y], axis=1).flatten()
+
+    def left_brow():
+        x = np.linspace(-3.5, -1.6, num_brow)
+        y = (x + 3.5) ** 2 / 4 + 0.6
+        return jnp.stack([x, y], axis=1).flatten()
+
+    def right_brow():
+        x = np.linspace(1.6, 3.5, num_brow)
+        y = (x - 3.5) ** 2 / 4 + 0.6
+        return jnp.stack([x, y], axis=1).flatten()
+
+    def mouth():
+        x = np.linspace(-1, 1, num_mouth)
+        y = -2.8 * np.ones_like(x)
+        return jnp.stack([x, y], axis=1).flatten()
+
+    def outline():
+        theta = np.linspace(0, 2 * np.pi, num_outline, endpoint=True)
+        x = np.cos(theta)
+        y = np.sin(theta)
+        r = 4.5
+        return jnp.stack([r * x, r * y], axis=1).flatten()
+
+    return [left_eye, right_eye, left_brow, right_brow, mouth, outline]
+
+
+def flattened_array_from_faces(fns):
+    pts = tuple(f() for f in fns)
+    xy = jnp.concatenate(pts, axis=-1).T.flatten()
+    xy = xy / jnp.max(jnp.abs(xy))
+    return xy
