@@ -30,8 +30,8 @@ def main(key):
         "batch_size": 100,
         "epochs_per_load": 1,
         "lr": 0.01,
-        "num_reloads": 100,
-        "load_size": 1000,
+        "num_reloads": 1000,
+        "load_size": 2000,
     }
 
     drift, diffusion = ou.vector_fields()

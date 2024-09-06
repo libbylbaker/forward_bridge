@@ -35,7 +35,7 @@ def main(key, T=1.0):
     training = {
         "batch_size": 100,
         "load_size": 5000,
-        "num_reloads": 300,
+        "num_reloads": 1000,
         "lr": 5e-3,
         "epochs_per_load": 1,
     }
