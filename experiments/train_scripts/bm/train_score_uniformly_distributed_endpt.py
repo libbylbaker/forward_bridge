@@ -13,7 +13,7 @@ seed = 1
 
 
 def main(key):
-    r = 1.0
+    r = 3.0
 
     def y_uniform_circle(key):
         theta = jax.random.uniform(key, (1,), minval=0, maxval=2 * jax.numpy.pi)
@@ -34,10 +34,10 @@ def main(key):
     }
 
     training = {
-        "batch_size": 1000,
+        "batch_size": 100,
         "epochs_per_load": 1,
         "lr": 0.01,
-        "num_reloads": 1000,
+        "num_reloads": 5000,
         "load_size": 1000,
     }
 

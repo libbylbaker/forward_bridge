@@ -58,14 +58,19 @@ def create_train_step_variable_y(key, model, optimiser, *model_init_sizes, dt, s
     @jax.jit
     def train_step(params, batch_stats, opt_state, times, trajectory, correction, y):
         y = jnp.repeat(y, (trajectory.shape[1] - 1), axis=0)
-        t, traj, correction, true_score = _data_setup(times, trajectory, correction, score)
+        t, traj, correction, true_score, diffusion = _data_setup(times, trajectory, correction, score)
 
         def loss_fn(params_):
             prediction, updates = model.apply(
                 {"params": params_, "batch_stats": batch_stats}, traj, y, t, train=True, mutable=["batch_stats"]
             )
-            loss = dt * jnp.mean(jnp.square(true_score - prediction) * correction)
+
+            sqrt_norm = prediction[:, None, :]@diffusion
+            weighted_norm = sqrt_norm@jnp.moveaxis(sqrt_norm, -1, -2)
+            diff_term = -2*prediction[:, None, :]@true_score[:, :, None]
+            loss = jnp.mean((weighted_norm + diff_term))
             return loss, updates
+
 
         grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
         (_loss, updates), grads = grad_fn(params)

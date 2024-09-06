@@ -13,14 +13,22 @@ seed = 1
 
 
 def main(key, T=1.0):
-    num_landmarks = 200
+    num_eye = 5
+    num_brow = 5
+    num_mouth = 5
+    num_outline = 25
 
-    y = data_boundary_pts.sample_circle(num_landmarks)
+    num_landmarks = num_mouth + num_outline + num_eye + num_brow
+
+    fns = data_boundary_pts.smiley_face_fns(num_eye, num_brow, num_mouth, num_outline)
+    pts = tuple(f() for f in fns)
+    y = jnp.concatenate(pts, axis=-1).T.flatten()
+    y = y/jnp.max(jnp.abs(y))
 
     sde = {"N": 100, "dim": y.size, "T": T, "y": y}
     dt = sde["T"] / sde["N"]
 
-    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/circ_r1_lms_{num_landmarks}")
+    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/emoji_smiley")
 
     network = {
         "output_dim": sde["dim"],

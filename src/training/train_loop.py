@@ -96,5 +96,5 @@ def train_variable_y(
 
             last_epoch = load == training["num_reloads"] - 1 and epoch == training["epochs_per_load"] - 1
             if actual_epoch % 100 == 0 or last_epoch:
-                average_time = total_time/actual_epoch
+                average_time = total_time/(actual_epoch+1)
                 save(checkpoint_path, params, opt_state, batch_stats, sde, network, training, average_time)
