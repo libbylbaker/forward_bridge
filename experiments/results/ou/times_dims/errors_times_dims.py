@@ -1,9 +1,9 @@
-import jax.numpy as jnp
-import jax
-import numpy as np
-import matplotlib.pyplot as plt
-
 import os.path
+
+import jax
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
 
 from experiments.plotting import load_checkpoint_w_batch_stats
 from src.sdes import sde_ornstein_uhlenbeck, time
@@ -53,7 +53,7 @@ for seed in [1, 2, 3, 4, 5]:
 
     errors_dims = []
     dims = np.arange(1, 33)
-    ts = time.grid(0, 1., 100)
+    ts = time.grid(0, 1.0, 100)
     for dim in dims:
         trained_score_, restored_ = score_dims(dim, seed)
         sde_ = restored_["sde"]
