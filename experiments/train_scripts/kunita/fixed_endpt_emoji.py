@@ -28,7 +28,7 @@ def main(key, T=1.0):
     sde = {"N": 100, "dim": y.size, "T": T, "y": y}
     dt = sde["T"] / sde["N"]
 
-    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/emoji_smiley")
+    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/emoji_smiley_forward_data")
 
     network = {
         "output_dim": sde["dim"],
@@ -49,7 +49,7 @@ def main(key, T=1.0):
     }
 
     drift, diffusion = sde_kunita.vector_fields()
-    data_fn = sde_kunita.data_reverse(sde["y"], sde["T"], sde["N"])
+    data_fn = sde_kunita.data_forward(sde["y"], sde["T"], sde["N"])
 
     model = ScoreUNet(**network)
     optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))

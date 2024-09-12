@@ -178,7 +178,7 @@ def _data_setup_forward(times, trajectory, correction, score):
     traj_plus1 = traj_plus1.reshape(-1, traj.shape[-1])
     t_plus1 = t_plus1.reshape(-1, t.shape[-1])
     true_score = true_score.reshape(-1, traj.shape[-1])
-    covs = covs.reshape(-1, traj.shape[-1])
+    covs = covs.reshape(t_plus1.shape[0], traj_plus1.shape[-1], -1)
 
     return t_plus1, traj_plus1, 1.0, true_score, covs
 
