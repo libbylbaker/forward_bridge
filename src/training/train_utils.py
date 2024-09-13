@@ -5,6 +5,8 @@ import jax
 import optax
 from jax import numpy as jnp
 
+from sdes import sde_utils
+
 
 def trained_score(model, params, batch_stats) -> Callable:
     @jax.jit
@@ -65,12 +67,11 @@ def create_train_step_variable_y(key, model, optimiser, *model_init_sizes, dt, s
                 {"params": params_, "batch_stats": batch_stats}, traj, y, t, train=True, mutable=["batch_stats"]
             )
 
-            sqrt_norm = prediction[:, None, :]@diffusion
-            weighted_norm = sqrt_norm@jnp.moveaxis(sqrt_norm, -1, -2)
-            diff_term = -2*prediction[:, None, :]@true_score[:, :, None]
+            sqrt_norm = prediction[:, None, :] @ diffusion
+            weighted_norm = sqrt_norm @ jnp.moveaxis(sqrt_norm, -1, -2)
+            diff_term = -2 * prediction[:, None, :] @ true_score[:, :, None]
             loss = jnp.mean((weighted_norm + diff_term))
             return loss, updates
-
 
         grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
         (_loss, updates), grads = grad_fn(params)
@@ -100,12 +101,11 @@ def _create_train_step(key, model, optimiser, *model_init_sizes, dt, score, data
             # weighted_norm = (difference[:, None, :]@covs)@difference[:, :, None]
             # loss = 0.5 * dt * jnp.mean(weighted_norm * correction)
             # return loss, updates
-            sqrt_norm = prediction[:, None, :]@diffusion
-            weighted_norm = sqrt_norm@jnp.moveaxis(sqrt_norm, -1, -2)
-            diff_term = -2*prediction[:, None, :]@true_score[:, :, None]
+            sqrt_norm = prediction[:, None, :] @ diffusion
+            weighted_norm = sqrt_norm @ jnp.moveaxis(sqrt_norm, -1, -2)
+            diff_term = -2 * prediction[:, None, :] @ true_score[:, :, None]
             loss = jnp.mean((weighted_norm + diff_term))
             return loss, updates
-
 
         grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
         (_loss, updates), grads = grad_fn(params)
@@ -183,19 +183,19 @@ def _data_setup_forward(times, trajectory, correction, score):
     return t_plus1, traj_plus1, 1.0, true_score, covs
 
 
-def get_score(drift, diffusion) -> Callable:
+def get_score(sde: sde_utils.SDE) -> Callable:
     @jax.jit
     def score(t0: float, X0: float, t1: float, X1: float):
         dt = t1 - t0
-        drift_last = drift(t0, X0)
-        diffusion_last = diffusion(t0, X0)
+        drift_last = sde.drift(t0, X0)
+        diffusion_last = sde.diffusion(t0, X0)
 
         # cov = diffusion_last @ diffusion_last.T
-        diffusion_step_last = (X1 - X0 - dt * drift_last)
+        diffusion_step_last = X1 - X0 - dt * drift_last
         # _score = 1/dt * jnp.linalg.solve(cov, diffusion_step_last)
 
         # return _score, cov
-        return 1/dt * diffusion_step_last, diffusion_last
+        return 1 / dt * diffusion_step_last, diffusion_last
 
     return score
 
