@@ -5,22 +5,22 @@ import jax.random as jr
 import optax
 
 from src.models.score_mlp import ScoreMLP
-from src.sdes import sde_cell_model
+from src.sdes import sde_cell_model, sde_data
 from src.training import train_loop, train_utils
 
 seed = 1
 
 
 def main(key, T=2.0):
-    sde = {"N": 50, "dim": 2, "T": T, "y": [1.5, 0.2]}
-    dt = sde["T"] / sde["N"]
+    cell_sde = sde_cell_model.cell_model(T, N=50)
 
-    y = sde["y"]
-    N = sde["N"]
-    checkpoint_path = os.path.abspath(f"../../checkpoints/cell/fixed_y_{y}_T_{T}_N_{N}")
+    dt = cell_sde.T / cell_sde.N
+
+    y = [1.5, 0.2]
+    checkpoint_path = os.path.abspath(f"../../checkpoints/cell/fixed_y_{y}_T_{T}_N_{cell_sde.N}")
 
     network = {
-        "output_dim": sde["dim"],
+        "output_dim": cell_sde.dim,
         "time_embedding_dim": 32,
         "init_embedding_dim": 16,
         "activation": "leaky_relu",
@@ -29,6 +29,7 @@ def main(key, T=2.0):
     }
 
     training = {
+        "y": [1.5, 0.2],
         "batch_size": 100,
         "epochs_per_load": 1,
         "lr": 1e-2,
@@ -36,15 +37,14 @@ def main(key, T=2.0):
         "load_size": 10000,
     }
 
-    drift, diffusion = sde_cell_model.vector_fields()
-    data_fn = sde_cell_model.data_reverse(sde["y"], sde["T"], sde["N"])
+    data_fn = sde_data.data_adjoint(y, cell_sde)
 
     model = ScoreMLP(**network)
     optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
 
-    score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
+    score_fn = train_utils.get_score(cell_sde)
 
-    x_shape = jnp.empty(shape=(1, sde["dim"]))
+    x_shape = jnp.empty(shape=(1, cell_sde.dim))
     t_shape = jnp.empty(shape=(1, 1))
     model_init_sizes = (x_shape, t_shape)
 
@@ -55,7 +55,7 @@ def main(key, T=2.0):
     )
 
     train_loop.train(
-        loop_key, training, data_fn, train_step, params, batch_stats, opt_state, sde, network, checkpoint_path
+        loop_key, training, data_fn, train_step, params, batch_stats, opt_state, cell_sde, network, checkpoint_path
     )
 
 

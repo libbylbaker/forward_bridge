@@ -1,22 +1,21 @@
-import os.path
-
 import jax.numpy as jnp
 import jax.random as jr
 import optax
 
 from src.models.score_mlp import ScoreMLP
-from src.sdes import sde_ornstein_uhlenbeck as ou
+from src.sdes import sde_data, sde_ornstein_uhlenbeck
 from src.training import train_loop, train_utils
 
 
 def main(key, checkpt_path, dim=1, T=1.0):
     y = jnp.ones(shape=(dim,))
 
-    sde = {"N": 100, "dim": dim, "T": T, "y": y}
-    dt = sde["T"] / sde["N"]
+    ou = sde_ornstein_uhlenbeck.ornstein_uhlenbeck(T=T, N=100, dim=dim)
+
+    dt = ou.T / ou.N
 
     network = {
-        "output_dim": sde["dim"],
+        "output_dim": ou.dim,
         "time_embedding_dim": 32,
         "init_embedding_dim": 16,
         "activation": "leaky_relu",
@@ -26,6 +25,7 @@ def main(key, checkpt_path, dim=1, T=1.0):
     }
 
     training = {
+        "y": y,
         "batch_size": 100,
         "epochs_per_load": 1,
         "lr": 0.01,
@@ -33,15 +33,14 @@ def main(key, checkpt_path, dim=1, T=1.0):
         "load_size": 1000,
     }
 
-    drift, diffusion = ou.vector_fields()
-    data_fn = ou.data_reverse(sde["y"], sde["T"], sde["N"])
+    data_gen = sde_data.data_adjoint(y, ou)
 
     model = ScoreMLP(**network)
     optimiser = optax.chain(optax.adam(learning_rate=training["lr"]))
 
-    score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
+    score_fn = train_utils.get_score(ou)
 
-    x_shape = jnp.empty(shape=(1, sde["dim"]))
+    x_shape = jnp.empty(shape=(1, ou.dim))
     t_shape = jnp.empty(shape=(1, 1))
     model_init_sizes = (x_shape, t_shape)
 
@@ -52,7 +51,7 @@ def main(key, checkpt_path, dim=1, T=1.0):
     )
 
     train_loop.train(
-        loop_key, training, data_fn, train_step, params, batch_stats, opt_state, sde, network, checkpt_path
+        loop_key, training, data_gen, train_step, params, batch_stats, opt_state, ou, network, checkpt_path
     )
 
 

@@ -5,20 +5,24 @@ import jax.random as jr
 import optax
 
 from src.models.score_mlp import ScoreMLPDistributedEndpt
-from src.sdes import sde_ornstein_uhlenbeck as ou
+from src.sdes import sde_data, sde_ornstein_uhlenbeck
 from src.training import train_loop, train_utils
 
 
 def main(key):
     y_min = -1.0
     y_max = 1.0
-    sde = {"x0": (1.0,), "N": 100, "dim": 1, "T": 1.0, "y": (1.0,)}
-    dt = sde["T"] / sde["N"]
 
+    def y_sampler(key, shape):
+        return jr.uniform(key, shape, minval=y_min, maxval=y_max)
+
+    ou = sde_ornstein_uhlenbeck.ornstein_uhlenbeck(T=1.0, N=100, dim=1)
+
+    dt = ou.T / ou.N
     checkpoint_path = os.path.abspath(f"../../checkpoints/ou/varied_y_{y_min}_to_{y_max}")
 
     network = {
-        "output_dim": sde["dim"],
+        "output_dim": ou.dim,
         "time_embedding_dim": 16,
         "init_embedding_dim": 16,
         "activation": "leaky_relu",
@@ -27,6 +31,8 @@ def main(key):
     }
 
     training = {
+        "y_min": y_min,
+        "y_max": y_max,
         "batch_size": 100,
         "epochs_per_load": 1,
         "lr": 0.01,
@@ -34,15 +40,14 @@ def main(key):
         "load_size": 2000,
     }
 
-    drift, diffusion = ou.vector_fields()
-    data_fn = ou.data_reverse_variable_y(sde["T"], sde["N"])
+    data_gen = sde_data.data_reverse_variable_y(ou)
 
     model = ScoreMLPDistributedEndpt(**network)
     optimiser = optax.adam(learning_rate=training["lr"])
 
-    score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
+    score_fn = train_utils.get_score(ou)
 
-    x_shape = jnp.empty(shape=(1, sde["dim"]))
+    x_shape = jnp.empty(shape=(1, ou.dim))
     t_shape = jnp.empty(shape=(1, 1))
     model_init_sizes = (x_shape, x_shape, t_shape)
 
@@ -52,18 +57,15 @@ def main(key):
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
-    def y_sampler(key, shape):
-        return jr.uniform(key, shape, minval=y_min, maxval=y_max)
-
     train_loop.train_variable_y(
         loop_key,
         training,
-        data_fn,
+        data_gen,
         train_step,
         params,
         batch_stats,
         opt_state,
-        sde,
+        ou,
         network,
         checkpoint_path,
         y_sampler,

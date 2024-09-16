@@ -6,7 +6,7 @@ import jax.random as jr
 import optax
 
 from src.models.score_mlp import ScoreMLP
-from src.sdes import sde_bm
+from src.sdes import sde_bm, sde_data
 from src.training import train_loop, train_utils
 
 seed = 1
@@ -15,17 +15,17 @@ seed = 1
 def main(key):
     r = 3.0
 
-    def y_uniform_circle(key):
-        theta = jax.random.uniform(key, (1,), minval=0, maxval=2 * jax.numpy.pi)
+    def y_uniform_circle(k):
+        theta = jax.random.uniform(k, (1,), minval=0, maxval=2 * jax.numpy.pi)
         return jnp.concatenate([r * jax.numpy.cos(theta), r * jax.numpy.sin(theta)], axis=-1)
-
-    sde = {"N": 100, "dim": 2, "T": 1.0}
-    dt = sde["T"] / sde["N"]
 
     checkpoint_path = os.path.abspath(f"../../checkpoints/bm/circle_uniformly_distributed_endpt_r_{r}")
 
+    bm = sde_bm.brownian_motion(T=1.0, N=100, dim=2)
+    dt = bm.T / bm.N
+
     network = {
-        "output_dim": sde["dim"],
+        "output_dim": bm.dim,
         "time_embedding_dim": 16,
         "init_embedding_dim": 16,
         "activation": "leaky_relu",
@@ -41,15 +41,14 @@ def main(key):
         "load_size": 1000,
     }
 
-    drift, diffusion = sde_bm.vector_fields()
-    data_fn = sde_bm.data_reverse_distributed_y(sde["T"], sde["N"], y_uniform_circle)
+    data_fn = sde_data.data_reverse_distributed_y(bm, y_uniform_circle)
 
     model = ScoreMLP(**network)
     optimiser = optax.adam(learning_rate=training["lr"])
 
-    score_fn = train_utils.get_score(drift=drift, diffusion=diffusion)
+    score_fn = train_utils.get_score(bm)
 
-    x_shape = jnp.empty(shape=(1, sde["dim"]))
+    x_shape = jnp.empty(shape=(1, bm.dim))
     t_shape = jnp.empty(shape=(1, 1))
     model_init_sizes = (x_shape, t_shape)
 
@@ -59,7 +58,7 @@ def main(key):
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
-    train_loop.train(key, training, data_fn, train_step, params, batch_stats, opt_state, sde, network, checkpoint_path)
+    train_loop.train(key, training, data_fn, train_step, params, batch_stats, opt_state, bm, network, checkpoint_path)
 
 
 if __name__ == "__main__":

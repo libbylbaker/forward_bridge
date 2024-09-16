@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments.plotting import load_checkpoint_w_batch_stats
-from src.sdes import sde_ornstein_uhlenbeck, time
+from src.sdes import sde_ornstein_uhlenbeck
 
 N = 100
 
@@ -42,22 +42,23 @@ errors_dims_all = []
 for seed in [1, 2, 3, 4, 5]:
     errors = []
     times = np.arange(1, 16)
-    true_score = sde_ornstein_uhlenbeck.score
     for T in times:
-        ts = time.grid(0, T, 100)
         trained_score_, restored_ = score_times(T, seed)
         sde_ = restored_["sde"]
-        error_d_ = error(ts[:-1], true_score, trained_score_, sde_, sde_["y"])
+        true_score = sde_.params[0]
+        ts = sde_.time_grid
+        error_d_ = error(ts[:-1], true_score, trained_score_, sde_, restored_["training"]["y"])
         errors.append(error_d_)
     errors_all.append(np.asarray(errors))
 
     errors_dims = []
     dims = np.arange(1, 33)
-    ts = time.grid(0, 1.0, 100)
     for dim in dims:
         trained_score_, restored_ = score_dims(dim, seed)
         sde_ = restored_["sde"]
-        error_d_ = error(ts[:-1], true_score, trained_score_, sde_, sde_["y"])
+        true_score = sde_.params[0]
+        ts = sde_.time_grid
+        error_d_ = error(ts[:-1], true_score, trained_score_, sde_, restored_["training"]["y"])
         errors_dims.append(error_d_)
     errors_dims_all.append(np.asarray(errors_dims))
 

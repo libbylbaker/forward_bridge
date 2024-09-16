@@ -1,126 +1,49 @@
 import jax
 import jax.numpy as jnp
 
-from src.sdes import sde_utils, time
-
-# Constants that are always the same but can be changed in the future
-
-_ALPHA = 1.0
-_SIGMA = 1.0
+from src.sdes import sde_utils
 
 
-def data_forward(x0, T, N):
-    return sde_utils.data_forward(x0, T, N, vector_fields())
-
-
-def data_reverse(y, T, N):
-    """
-    :return: ts,
-    reverse process: (t, dim), where t is the number of time steps and dim the dimension of the SDE
-    correction process: float, correction process at time T
-    """
-    ts = time.grid(t_start=0, T=T, N=N)
-    ts_reverse = time.reverse(T, ts)
-    reverse_drift, reverse_diffusion = vector_fields_reverse()
-
-    @jax.jit
-    @jax.vmap
-    def data(key):
-        reverse_ = sde_utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion)
-        correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
-        correction_ = sde_utils.solution_ode(ts, x0=jnp.asarray([1.0]), drift=correction_drift_)
-        return ts[..., None], reverse_, correction_[-1, -1]
-
-    return data
-
-
-def data_reverse_variable_y(T, N):
-    ts = time.grid(t_start=0, T=T, N=N)
-    ts_reverse = time.reverse(T, ts)
-    reverse_drift, reverse_diffusion = vector_fields_reverse()
-
-    @jax.jit
-    @jax.vmap
-    def data(key, y):
-        reverse_ = sde_utils.solution(key, ts_reverse, y, reverse_drift, reverse_diffusion)
-        # correction_drift_ = lambda t, corr, *args: drift_correction(t, 0.0, corr)
-        # correction_ = utils.solution_ode(ts, x0=jnp.asarray([1.0]), drift=correction_drift_).ys
-        return ts[..., None], reverse_, jnp.asarray(1.0), y
-
-    return data
-
-
-def vector_fields():
+def ornstein_uhlenbeck(T, N, dim, alpha=1.0, sigma=1.0):
     def drift(t, x, *args):
         """dX_t = -alpha X_t dt + sigma dW_t"""
         assert x.ndim == 1
-        return -_ALPHA * x
+        return -alpha * x
 
     def diffusion(t, x, *args):
         """dX_t = -alpha X_t dt + sigma dW_t"""
         assert x.ndim == 1
         dim = x.size
-        return _SIGMA * jnp.identity(dim)
+        return sigma * jnp.identity(dim)
 
-    return drift, diffusion
+    def adj_drift(t, y, *args):
+        return alpha * y
 
+    def adj_diffusion(t, y, *args):
+        return diffusion(T - t, y)
 
-def vector_fields_reverse():
-    def drift(t, rev, *args):
-        return _ALPHA * rev
+    def correction(t, y, correction, *args):
+        return 1.0 * correction
 
-    def diffusion(t, rev, *args):
-        rev = jnp.asarray(rev)
-        assert rev.ndim == 1
-        dim = rev.size
-        return _SIGMA * jnp.identity(dim)
+    def score(t, x, T, y):
+        x = jnp.asarray(x)
+        y = jnp.asarray(y)
+        var = _var_score(T - t)
+        mean = _mean_score(T - t, x)
+        _score = jnp.exp(-alpha * (T - t)) / var * (y - mean)
+        return _score
 
-    return drift, diffusion
+    def score_forward(t0, x0, t, x):
+        var = _var_score(t - t0)
+        mean = _mean_score(t - t0, x0)
+        return (1 / var) * (mean - x)
 
+    def _var_score(t):
+        return sigma**2 * (1 - jnp.exp(-2 * alpha * t)) / (2 * alpha)
 
-def vector_fields_reverse_and_correction():
-    reverse_drift, reverse_diffusion = vector_fields_reverse()
+    def _mean_score(t, x):
+        return x * jnp.exp(-1 * alpha * t)
 
-    def drift(t, x):
-        reverse = x[:-1]
-        correction = x[-1, None]
-        correction_drift = drift_correction(t, reverse, correction)
-        reverse_drift_ = reverse_drift(t, reverse)
-        return jnp.concatenate([reverse_drift_, correction_drift])
-
-    def diffusion(t, x):
-        reverse = x[:-1]
-        correction = x[-1]
-        d_reverse = reverse_diffusion(t, reverse)
-        reverse_and_correction = jnp.pad(d_reverse, ((0, 1), (0, 1)), mode="constant", constant_values=0.0)
-        return reverse_and_correction
-
-    return drift, diffusion
-
-
-def drift_correction(t, rev, corr, *args):
-    assert corr.ndim == 1
-    return 1.0 * corr
-
-
-def score(t, x, T, y):
-    x = jnp.asarray(x)
-    y = jnp.asarray(y)
-    var = _var_score(T - t)
-    mean = _mean_score(T - t, x)
-    _score = jnp.exp(-_ALPHA * (T - t)) / var * (y - mean)
-    return _score
-
-
-def score_forward(t0, x0, t, x):
-    var = _var_score(t - t0)
-    mean = _mean_score(t - t0, x0)
-    return (1 / var) * (mean - x)
-
-
-def _var_score(t):
-    return _SIGMA**2 * (1 - jnp.exp(-2 * _ALPHA * t)) / (2 * _ALPHA)
-
-
-def _mean_score(t, x):
-    return x * jnp.exp(-1 * _ALPHA * t)
+    return sde_utils.SDE(
+        T, N, dim, drift, diffusion, adj_drift, adj_diffusion, correction, None, (dim,), (score, score_forward)
+    )
