@@ -1,7 +1,6 @@
 import jax.numpy as jnp
 
 from src.sdes import sde_bm
-from src.sdes import sde_ornstein_uhlenbeck
 from src.training.train_utils import get_score
 
 
