@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from sdes import sde_kunita
 from src.sdes import sde_bm, sde_cell_model, sde_data, sde_ornstein_uhlenbeck, sde_time_dependent
 
 

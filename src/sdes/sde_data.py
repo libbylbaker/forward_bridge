@@ -22,7 +22,6 @@ def data_forward(x0, sde: sde_utils.SDE):
 def data_adjoint(y, sde: sde_utils.SDE):
     ts = sde.time_grid_reverse
     y = jnp.asarray(y)
-    assert y.ndim == 1
 
     @jax.jit
     @jax.vmap
@@ -72,7 +71,6 @@ def data_reverse_distributed_y(sde: sde_utils.SDE, sample_y: Callable):
 def data_reverse_correction(y, sde: sde_utils.SDE):
     ts = sde.time_grid_reverse
     y = jnp.asarray(y)
-    assert y.ndim == 1
 
     def drift(t, x):
         reverse = x[:-1]
