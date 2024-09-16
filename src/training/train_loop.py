@@ -73,7 +73,7 @@ def train_variable_y(
         # load data
         data_key = jr.split(data_key[0], training["load_size"])
         y_key = jr.split(data_key[0], 1)[0]
-        y = sample_y_fn(y_key, shape=(training["load_size"], sde["dim"]))
+        y = sample_y_fn(y_key, shape=(training["load_size"], sde.dim))
         data = data_fn(data_key, y)
 
         infinite_dataloader = dataloader(data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0])
