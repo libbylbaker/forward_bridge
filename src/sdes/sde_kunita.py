@@ -21,6 +21,7 @@ def kunita(T, N, num_landmarks, dim=2, sigma=1.0, kappa=0.1, grid_size=5, grid_r
         batch_over_vals = jax.vmap(batch_over_grid, in_axes=(0, None))
         Q_half = batch_over_vals(x, grid_)
         Q_half = Q_half.reshape(-1, grid_size**2)
+        Q_half = jnp.kron(Q_half, jnp.eye(2))
 
         scaling = (grid_range[1] - grid_range[0]) / grid_size
 
@@ -73,7 +74,7 @@ def kunita(T, N, num_landmarks, dim=2, sigma=1.0, kappa=0.1, grid_size=5, grid_r
         adj_diffusion,
         correction,
         None,
-        (grid_size**2, 2),
+        (2 * grid_size**2,),
         None,
     )
 

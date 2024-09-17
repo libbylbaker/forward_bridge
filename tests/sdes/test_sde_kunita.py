@@ -22,16 +22,17 @@ def kunita_sde_3_landmarks():
 def test_kunita_drift(kunita_sde_3_landmarks):
     t = 0.0
     x = jnp.array([[1.0, 2.0], [3, 4], [5, 6]])
+    x = x.flatten()
     drift_ = kunita_sde_3_landmarks.drift(t, x)
-    assert drift_.shape == (3, 2)
+    assert drift_.shape == (3 * 2,)
 
 
 def test_kunita_diffusion(kunita_sde_3_landmarks):
     t = 0.0
     x = jnp.array([[1.0, 2.0], [3, 4], [5, 6]])
-    # x = x.flatten()
+    x = x.flatten()
     diffusion_ = kunita_sde_3_landmarks.diffusion(t, x)
-    assert diffusion_.shape == (3, 5**2)
+    assert diffusion_.shape == (2 * 3, 2 * 5**2)
 
 
 # def test_drift_correction():
@@ -45,21 +46,23 @@ def test_kunita_diffusion(kunita_sde_3_landmarks):
 
 def test_data_forward_1_landmark(kunita_sde_1_landmarks):
     x0 = jnp.array([[1.0, 2.0]])
+    x0 = x0.flatten()
     data_gen = sde_data.data_forward(x0, kunita_sde_1_landmarks)
     keys = jax.random.split(jax.random.PRNGKey(1), 5)
     ts, forward, correction = data_gen(keys)
     assert ts.shape == (5, 10, 1)
-    assert forward.shape == (5, 10, 1, 2)
+    assert forward.shape == (5, 10, 2)
     assert correction.shape == (5,)
     assert jnp.all(forward[:, 0] == jnp.asarray(x0))
 
 
 def test_data_adjoint_1_landmark(kunita_sde_1_landmarks):
     y = jnp.array([[1.0, 2.0]])
+    y = y.flatten()
     data_gen = sde_data.data_adjoint(y, kunita_sde_1_landmarks)
     keys = jax.random.split(jax.random.PRNGKey(1), 5)
     ts, reverse, correction = data_gen(keys)
-    assert ts.shape == (5, 10, 1, 2)
-    assert reverse.shape == (5, 10, 1, 2)
+    assert ts.shape == (5, 10, 1)
+    assert reverse.shape == (5, 10, 2)
     assert correction.shape == (5,)
     assert jnp.all(reverse[:, 0] == jnp.asarray(y))
