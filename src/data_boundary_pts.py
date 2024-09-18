@@ -112,7 +112,7 @@ def flattened_array_from_faces(fns):
     return xy
 
 
-def butterfly(path="../data/inverted_butterfly_tom.png", remove_pts=-2):
+def butterfly(path="../data/inverted_butterfly_tom.png", remove_pts=-2, num_landmarks=100):
     def order_points(unordered_points):
         points_for_waste = unordered_points.copy()
         p0 = points_for_waste[0, :].copy()
@@ -148,24 +148,19 @@ def butterfly(path="../data/inverted_butterfly_tom.png", remove_pts=-2):
         minpt = np.min(points)
         return (points - minpt) / (maxpt - minpt)
 
-    return _interpolate()
+    x, y = _interpolate()
+    step = len(x) // (num_landmarks - 1)
+    indices = jnp.arange(0, len(x), step)
+    x = x[indices]
+    y = y[indices]
+    return jnp.stack([x, y], axis=1).flatten()
 
 
 def butterfly_tom(num_landmarks=100):
-    x, y = butterfly("../../data/inverted_butterfly_tom.png", -2)
-    step = len(x) // (num_landmarks - 1)
-    indices = jnp.arange(0, len(x), step)
-    x = x[indices]
-    y = y[indices]
-    return jnp.stack([x, y], axis=1).flatten()
+    return butterfly("../../data/inverted_butterfly_tom.png", -2, num_landmarks)
 
 
 def butterfly2(num_landmarks=100):
-    path_b2 = "../../data/inverted_butterfly2.png"
-    remove_pts_b2 = -70
-    x, y = butterfly(path_b2, remove_pts_b2)
-    step = len(x) // (num_landmarks - 1)
-    indices = jnp.arange(0, len(x), step)
-    x = x[indices]
-    y = y[indices]
-    return jnp.stack([x, y], axis=1).flatten()
+    path = "../../data/inverted_butterfly2.png"
+    remove_pts = -70
+    return butterfly(path, remove_pts, num_landmarks)
