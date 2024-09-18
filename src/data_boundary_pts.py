@@ -1,7 +1,9 @@
+import cv2
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import spatial
 
 
 def sample_circle(num_landmarks: int, radius=1.0, centre=jnp.asarray([0, 0])) -> jnp.ndarray:
@@ -108,3 +110,62 @@ def flattened_array_from_faces(fns):
     xy = jnp.concatenate(pts, axis=-1).T.flatten()
     xy = xy / jnp.max(jnp.abs(xy))
     return xy
+
+
+def butterfly(path="../data/inverted_butterfly_tom.png", remove_pts=-2):
+    def order_points(unordered_points):
+        points_for_waste = unordered_points.copy()
+        p0 = points_for_waste[0, :].copy()
+        points = [p0]
+        for _ in range(len(unordered_points)):
+            Midx = spatial.distance_matrix(p0[None, :], points_for_waste)
+            Midx[Midx == 0.0] = 100
+            idx = np.argmin(Midx)
+            p0 = points_for_waste[idx, :].copy()
+            points_for_waste[idx, :] = 100000
+            points.append(p0)
+        return np.asarray(points)
+
+    def get_points(im_path: str):
+        image = cv2.imread(im_path)
+        gray_scale_im = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        edges_in_im = cv2.Canny(gray_scale_im, 50, 200)
+        pixels = np.argwhere(edges_in_im == 255)
+        points = np.array([1, -1]) * pixels[:, ::-1]  # Rotate points
+        return points
+
+    def _interpolate():
+        pts = get_points(path)
+        ordered = np.asarray(order_points(pts), dtype=float)[:remove_pts]
+        ordered[:, 0] = _scale(ordered[:, 0])
+        ordered[:, 1] = _scale(ordered[:, 1])
+        x1 = np.interp(np.arange(0.0, len(ordered), 0.05), np.arange(len(ordered)), ordered[:, 0])
+        x2 = np.interp(np.arange(0.0, len(ordered), 0.05), np.arange(len(ordered)), ordered[:, 1])
+        return x1, x2
+
+    def _scale(points):
+        maxpt = np.max(points)
+        minpt = np.min(points)
+        return (points - minpt) / (maxpt - minpt)
+
+    return _interpolate()
+
+
+def butterfly_tom(num_landmarks=100):
+    x, y = butterfly("../../data/inverted_butterfly_tom.png", -2)
+    step = len(x) // (num_landmarks - 1)
+    indices = jnp.arange(0, len(x), step)
+    x = x[indices]
+    y = y[indices]
+    return jnp.stack([x, y], axis=1).flatten()
+
+
+def butterfly2(num_landmarks=100):
+    path_b2 = "../../data/inverted_butterfly2.png"
+    remove_pts_b2 = -70
+    x, y = butterfly(path_b2, remove_pts_b2)
+    step = len(x) // (num_landmarks - 1)
+    indices = jnp.arange(0, len(x), step)
+    x = x[indices]
+    y = y[indices]
+    return jnp.stack([x, y], axis=1).flatten()
