@@ -3,6 +3,7 @@ import os.path
 import jax.numpy as jnp
 import jax.random as jr
 import optax
+import orbax.checkpoint
 
 from src import data_boundary_pts
 from src.models.score_unet import ScoreUNet
@@ -13,25 +14,28 @@ seed = 1
 
 
 def main(key):
+
+    load = False
+
     num_eye = 5
     num_brow = 5
     num_mouth = 5
-    num_outline = 25
+    num_outline = 20
 
     num_landmarks = num_mouth + num_outline + 2*num_eye + 2*num_brow
 
     fns = data_boundary_pts.smiley_face_fns(num_eye, num_brow, num_mouth, num_outline)
     x0 = data_boundary_pts.flattened_array_from_faces(fns)
 
-    sigma = 0.5
+    sigma = 0.2
     kappa = 1 / (sigma * jnp.sqrt(2 * jnp.pi))
 
-    kunita = sde_kunita.kunita(T=1., N=100, num_landmarks=num_landmarks, sigma=sigma, kappa=kappa, grid_size=25)
+    sde_args = {"T": 2., "N": 100, "num_landmarks": num_landmarks, "sigma": sigma, "kappa": kappa, "grid_size": 25}
+    kunita = sde_kunita.kunita(**sde_args)
 
-    # sde = {"N": 100, "dim": x0.size, "T": T, "x0": x0}
     dt = kunita.T/kunita.N
 
-    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/fw/emoji")
+    checkpoint_path = os.path.abspath(f"../../checkpoints/kunita/fw/emoji_{kunita.T}_{sigma}")
 
     network = {
         "output_dim": kunita.dim,
@@ -44,11 +48,11 @@ def main(key):
     }
 
     training = {
-        "batch_size": 64,
-        "epochs_per_load": 4,
+        "batch_size": 128,
+        "epochs_per_load": 1,
         "lr": 5e-3,
-        "num_reloads": 3000,
-        "load_size": 256,
+        "num_reloads": 6000,
+        "load_size": 2048,
     }
 
     data_gen = sde_data.data_forward(x0, kunita)
@@ -67,8 +71,13 @@ def main(key):
         train_key, model, optimiser, *model_init_sizes, dt=dt, score=score_fn
     )
 
+    if load:
+        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+        restored = orbax_checkpointer.restore(checkpoint_path)
+        params = restored["params"]
+
     train_loop.train(
-        loop_key, training, data_gen, train_step, params, batch_stats, opt_state, kunita, network, checkpoint_path
+        loop_key, training, data_gen, train_step, params, batch_stats, opt_state, sde_args, network, checkpoint_path
     )
 
 
