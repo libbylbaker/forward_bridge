@@ -157,16 +157,16 @@ def butterfly(path="../data/inverted_butterfly_tom.png", remove_pts=-2, num_land
 
 
 def butterfly_tom(num_landmarks=100):
-    return butterfly("../../data/inverted_butterfly_tom.png", -2, num_landmarks)
+    return butterfly("../../../../data/inverted_butterfly_tom.png", -2, num_landmarks)
 
 
 def butterfly1(num_landmarks=100):
-    path = "../../data/inverted_butterfly1.png"
+    path = "../../../../data/inverted_butterfly1.png"
     remove_pts = -466
     return butterfly(path, remove_pts, num_landmarks)
 
 
 def butterfly2(num_landmarks=100):
-    path = "../../data/inverted_butterfly2.png"
+    path = "../../../../data/inverted_butterfly2.png"
     remove_pts = -70
     return butterfly(path, remove_pts, num_landmarks)
