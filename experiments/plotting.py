@@ -37,6 +37,15 @@ def checkpoint_unet(checkpoint_path):
     trained_score = train_utils.trained_score(model, params, batch_stats)
     return trained_score, restored
 
+def checkpoint_neural(checkpoint_path):
+    orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+    restored = orbax_checkpointer.restore(checkpoint_path)
+    model = src.models.CTUNO1D(**restored["network"])
+    params = restored["params"]
+    batch_stats = restored["batch_stats"]
+    trained_score = train_utils.trained_score(model, params, batch_stats)
+    return trained_score, restored
+
 
 def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max, cmap="viridis"):
     x = jnp.linspace(x_min, x_max, 100)
