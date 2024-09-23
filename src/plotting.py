@@ -4,6 +4,19 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 
+def plot_emoji_traj(parts):
+    fig, ax = plt.subplots()
+    cmap = plt.get_cmap("viridis")
+    for part in parts:  # part has shape (T, N_part, 2)
+        for t in range(len(part)):
+            # set color based on time and cmap
+            col = cmap(t / len(part))
+            plt.plot(part[t, :, 0], part[t, :, 1], c=col)
+    cbar = fig.colorbar(plt.cm.ScalarMappable(cmap=cmap), ax=ax)
+    cbar.set_label("Time")
+    return fig, ax
+
+
 def plot_kunita_traj(n_landmarks, traj, ax_scale=0.1):
     fig, ax = plt.subplots()
     for landmark in jnp.arange(0, n_landmarks, 1):
