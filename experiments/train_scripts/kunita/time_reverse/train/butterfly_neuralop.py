@@ -25,7 +25,7 @@ def main(key):
     sde_args = {"T": 1., "N": 100, "num_landmarks": num_landmarks, "x0": x0, "sigma": sigma, "kappa": kappa, "grid_size": 50, "grid_range": (-0.5, 1.5)}
     kunita = sde_kunita.kunita(**sde_args)
 
-    checkpoint_path = os.path.abspath(f"../../../../checkpoints/kunita/fw/butterfly_neuralop")
+    checkpoint_path = os.path.abspath(f"../../../../checkpoints/kunita/time_rev/butterfly_neuralop")
 
     network = {
         "out_co_dim": 2,

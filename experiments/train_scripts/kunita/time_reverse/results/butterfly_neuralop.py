@@ -12,12 +12,12 @@ seed = 1
 
 def main(key):
 
-    test_landmarks = 32
+    test_landmarks = 100
     x0 = data_boundary_pts.butterfly1(test_landmarks)
     y = data_boundary_pts.butterfly2(test_landmarks)
     target = y-x0
 
-    checkpoint_path = os.path.abspath(f"../../../../checkpoints/kunita/fw/butterfly_neuralop")
+    checkpoint_path = os.path.abspath(f"../../../../checkpoints/kunita/time_rev/butterfly_neuralop")
     trained_score, restored = checkpoint_neural(checkpoint_path)
 
     sde_args = restored["sde"]
@@ -34,8 +34,8 @@ def main(key):
 
     traj = x0.reshape(-1, sde_args["num_landmarks"], 2) + traj
 
-    for lm in range(sde_args["num_landmarks"]):
-        plt.plot(traj[:, lm, 0], traj[:, lm, 1])
+    # for lm in range(sde_args["num_landmarks"]):
+    #     plt.plot(traj[:, lm, 0], traj[:, lm, 1])
     plt.scatter(traj[0, :, 0], traj[0, :, 1], label="start")
     plt.scatter(traj[-1, :, 0], traj[-1, :, 1], label="end")
     plt.scatter(y[::2], y[1::2], label="y")

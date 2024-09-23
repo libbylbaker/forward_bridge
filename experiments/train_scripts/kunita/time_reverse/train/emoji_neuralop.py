@@ -34,7 +34,7 @@ def main(key):
 
     dt = kunita.T/kunita.N
 
-    checkpoint_path = os.path.abspath(f"../../../../../checkpoints/kunita/fw/emoji_neuralop")
+    checkpoint_path = os.path.abspath(f"../../../../../checkpoints/kunita/time_rev/emoji_neuralop")
 
     network = {
         "out_co_dim": 2,

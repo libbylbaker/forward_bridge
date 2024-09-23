@@ -28,7 +28,7 @@ def main(key):
 
     target = y-x0
 
-    checkpoint_path = os.path.abspath(f"../../../../../checkpoints/kunita/fw/emoji_neuralop")
+    checkpoint_path = os.path.abspath(f"../../../../../checkpoints/kunita/time_rev/emoji_neuralop")
     trained_score, restored = checkpoint_neural(checkpoint_path)
 
     sde_args = restored["sde"]
