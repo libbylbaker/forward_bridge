@@ -4,14 +4,22 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 
-def plot_emoji_traj(parts):
+def plot_emoji_traj(parts, time_step=1):
     fig, ax = plt.subplots()
-    cmap = plt.get_cmap("viridis")
+    cmap = plt.get_cmap("Spectral")
     for part in parts:  # part has shape (T, N_part, 2)
-        for t in range(len(part)):
-            # set color based on time and cmap
+        for t in jnp.arange(1, len(part), time_step):
+            linewidth = 0.7
+            alpha = 0.5
             col = cmap(t / len(part))
-            plt.plot(part[t, :, 0], part[t, :, 1], c=col)
+            plt.plot(part[t, :, 0], part[t, :, 1], c=col, linewidth=linewidth, alpha=alpha)
+
+        for t in [0, len(part)-1]:
+            linewidth = 1.3
+            alpha = 1
+            col = cmap(t / len(part))
+            plt.plot(part[t, :, 0], part[t, :, 1], c=col, linewidth=linewidth, alpha=alpha)
+
     cbar = fig.colorbar(plt.cm.ScalarMappable(cmap=cmap), ax=ax)
     cbar.set_label("Time")
     return fig, ax
@@ -64,12 +72,12 @@ def data_heatmap(times, trajectories):
 
 
 def plot_score(
-    true_score,
-    learned_score,
-    T,
-    y,
-    t=jnp.asarray([0.0, 0.25, 0.5, 0.75]),
-    x=jnp.linspace(-1, 3, 1000)[..., None],
+        true_score,
+        learned_score,
+        T,
+        y,
+        t=jnp.asarray([0.0, 0.25, 0.5, 0.75]),
+        x=jnp.linspace(-1, 3, 1000)[..., None],
 ):
     y = y[0]
     fig, axs = plt.subplots(nrows=1, ncols=t.size, sharey=True)
@@ -90,11 +98,11 @@ def plot_score(
 
 
 def plot_forward_score(
-    true_score,
-    learned_score,
-    x0,
-    t=jnp.asarray([0.0, 0.5, 0.75, 0.95]),
-    x=jnp.linspace(-2, 2, 1000)[..., None],
+        true_score,
+        learned_score,
+        x0,
+        t=jnp.asarray([0.0, 0.5, 0.75, 0.95]),
+        x=jnp.linspace(-2, 2, 1000)[..., None],
 ):
     x0 = x0[0]
     fig, axs = plt.subplots(nrows=1, ncols=t.size, sharey=True)
@@ -121,7 +129,6 @@ def plot_score_2d(learned_score, t=jnp.asarray([0.0, 1.0, 2.0])):
 
     fig, axs = plt.subplots(nrows=2, ncols=t.size, sharey=True)
     for col, ts in enumerate(t):
-
         def vectorised_score(ts, x, y):
             xy = jnp.concatenate([x, y], axis=-1)
             return jax.vmap(jax.vmap(learned_score, in_axes=(None, 0)), in_axes=(None, 0))(ts, xy)
