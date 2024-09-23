@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from src.sdes import sde_utils
 
 
-def kunita(T, N, num_landmarks, x0, dim=2, sigma=1.0, kappa=0.1, grid_size=5, grid_range=(-2, 2)):
+def kunita(T, N, num_landmarks, x0=None, y=None, dim=2, sigma=1.0, kappa=0.1, grid_size=5, grid_range=(-2, 2)):
     grid_ = jnp.linspace(*grid_range, grid_size)
     grid_ = jnp.stack(jnp.meshgrid(grid_, grid_, indexing="xy"), axis=-1)
     grid_ = grid_.reshape(-1, dim)
@@ -16,7 +16,8 @@ def kunita(T, N, num_landmarks, x0, dim=2, sigma=1.0, kappa=0.1, grid_size=5, gr
         return jnp.zeros_like(x)
 
     def diffusion(t: float, x: jnp.ndarray) -> jnp.ndarray:
-        x = x.reshape(-1, dim) + x0.reshape(-1, dim)
+        if x0 is not None:
+            x = x.reshape(-1, dim) + x0.reshape(-1, dim)
         x = x.reshape(-1, dim)
         batch_over_grid = jax.vmap(gauss_kernel, in_axes=(None, 0))
         batch_over_vals = jax.vmap(batch_over_grid, in_axes=(0, None))
@@ -29,6 +30,8 @@ def kunita(T, N, num_landmarks, x0, dim=2, sigma=1.0, kappa=0.1, grid_size=5, gr
         return scaling**2 * Q_half
 
     def adj_drift(t, x, partials=None):
+        if y is not None:
+            x = x + y
         if partials is None:
             partials = _partial_derivatives_by_row(t, x)
         kernel_matrix = diffusion(t, x)
@@ -36,6 +39,8 @@ def kunita(T, N, num_landmarks, x0, dim=2, sigma=1.0, kappa=0.1, grid_size=5, gr
         return 1 / x.size * kernel_matrix @ sum_of_partials
 
     def adj_diffusion(t, x, *args):
+        if y is not None:
+            x = x + y
         return diffusion(t, x)
 
     def correction(t, y, corr, partials=None):
