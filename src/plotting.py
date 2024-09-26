@@ -4,21 +4,25 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 
-def plot_emoji_traj(parts, time_step=1):
+def plot_emoji_traj(parts, true_parts=None, time_step=1):
     fig, ax = plt.subplots()
     cmap = plt.get_cmap("Spectral")
     for part in parts:  # part has shape (T, N_part, 2)
-        for t in jnp.arange(1, len(part), time_step):
+        for t in jnp.arange(1, len(part)-1, time_step):
             linewidth = 0.7
             alpha = 0.5
             col = cmap(t / len(part))
             plt.plot(part[t, :, 0], part[t, :, 1], c=col, linewidth=linewidth, alpha=alpha)
 
         for t in [0, len(part)-1]:
-            linewidth = 1.3
+            linewidth = 2
             alpha = 1
             col = cmap(t / len(part))
             plt.plot(part[t, :, 0], part[t, :, 1], c=col, linewidth=linewidth, alpha=alpha)
+
+        if true_parts is not None:
+            for part in true_parts:
+                plt.plot(part[:, 0], part[:, 1])
 
     cbar = fig.colorbar(plt.cm.ScalarMappable(cmap=cmap), ax=ax)
     cbar.set_label("Time")
