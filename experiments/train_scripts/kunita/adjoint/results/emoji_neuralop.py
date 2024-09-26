@@ -51,18 +51,19 @@ def main(key):
              traj[:, 2*(num_eye+num_brow):2*(num_eye+num_brow)+num_mouth],
              traj[:, -num_outline:]]
 
-    fig, ax = plotting.plot_emoji_traj(parts, time_step=5)
-    plt.savefig(f"../figs/emoji_neuralop_plot.png")
+
+    fig, ax = plotting.plot_emoji_traj(parts, time_step=1)
+    plt.savefig(f"../figs/emoji_neuralop_shape.png")
 
 
     # for lm in range(sde_args["num_landmarks"]):
-    #     plt.plot(traj[:, lm, 0], traj[:, lm, 1])
+    #     plt.plot(traj[:-1, lm, 0], traj[:-1, lm, 1])
     # plt.scatter(traj[0, :, 0], traj[0, :, 1], label="start")
-    # plt.scatter(traj[-1, :, 0], traj[-1, :, 1], label="end")
+    # plt.scatter(traj[-3, :, 0], traj[-3, :, 1], label="end")
     # plt.scatter(y[::2], y[1::2], label="y")
     # plt.scatter(x0[::2], x0[1::2], label="x0")
     # plt.legend()
-    # plt.savefig(f"../figs/emoji_neuralop.png")
+    # plt.savefig(f"../figs/emoji_neuralop_test.png")
     # plt.show()
 
 
