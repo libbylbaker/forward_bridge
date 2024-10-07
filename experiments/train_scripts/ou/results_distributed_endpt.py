@@ -7,6 +7,7 @@ from tueplots.constants.color import palettes
 import matplotlib.pyplot as plt
 
 import orbax.checkpoint
+import jax.numpy as jnp
 from src.training import train_utils
 
 
@@ -16,6 +17,23 @@ def format_plt():
     plt.rcParams.update(axes.lines())
     plt.rcParams.update(cycler.cycler(color=palettes.paultol_muted))
     plt.rcParams.update(figsizes.aistats2023_full(nrows=1, ncols=3))
+
+
+def plot_data():
+    times = [0.25, 0.5, 0.75]
+
+    data = jnp.load("saved_data.npy")
+    y = jnp.load("ys.npy")
+
+    fig, axs = plt.subplots(nrows=1, ncols=len(times), sharey=True, sharex=True)
+    for i, t in enumerate(times):
+        x = data[i]
+        axs[i].scatter(x, y, alpha=0.3)
+        axs[i].set(xlim=(-1, 1))
+        axs[i].set_title(f"Time: {t:.2f}")
+        axs[i].set_xlabel(r"$x$")
+    axs[0].set_ylabel(r"$y$")
+    plt.savefig("figs/data.png")
 
 
 if __name__=="__main__":
@@ -43,3 +61,6 @@ if __name__=="__main__":
 
     fig, axs = plot_score_error_variable_y(true_score, trained_score, -1, 1, -1, 1, cmap=cmap)
     plt.savefig('figs/ou_score_varied_y_-1.0_to_1.0_error.png')
+
+    plot_data()
+

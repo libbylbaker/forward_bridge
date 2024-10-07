@@ -1,4 +1,5 @@
 import jax.random as jr
+import jax.numpy as jnp
 import orbax
 from flax.training import orbax_utils
 import time
@@ -21,6 +22,14 @@ def save(path, params, opt_state, batch_stats, sde, network, training, epoch_tim
     orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
     save_args = orbax_utils.save_args_from_target(ckpt)
     orbax_checkpointer.save(path, ckpt, save_args=save_args, force=True)
+
+
+def save_training_data(traj, y, N, data_at_times=None): # reverse has shape (B, N*T, dim)
+    times = [0.25, 0.5, 0.75]
+    for i, t in enumerate(times):
+        index = int(N*t)
+        data_at_times[i].append(traj[:, index])
+    return data_at_times
 
 
 def train(key, training, data_fn, train_step, params, batch_stats, opt_state, sde, network, checkpoint_path):
@@ -76,12 +85,18 @@ def train_variable_y(
         y = sample_y_fn(y_key, shape=(training["load_size"], sde.dim))
         data = data_fn(data_key, y)
 
+        data_at_times = [[], [], []]
+        ys = []
+
         infinite_dataloader = dataloader(data, training["batch_size"], loop=True, key=jr.split(dataloader_key, 1)[0])
         total_time = 0
         for epoch in range(training["epochs_per_load"]):
             total_loss = 0
             start = time.process_time()
             for batch, (ts, reverse, correction, y) in zip(range(batches_per_epoch), infinite_dataloader):
+                data_at_times = save_training_data(reverse, y, 100, data_at_times)
+                ys.append(y)
+
                 params, batch_stats, opt_state, _loss = train_step(
                     params, batch_stats, opt_state, ts, reverse, correction, y
                 )
@@ -98,3 +113,5 @@ def train_variable_y(
             if actual_epoch % 100 == 0 or last_epoch:
                 average_time = total_time/(actual_epoch+1)
                 save(checkpoint_path, params, opt_state, batch_stats, sde, network, training, average_time)
+                jnp.save("saved_data", data_at_times)
+                jnp.save("ys", ys)
