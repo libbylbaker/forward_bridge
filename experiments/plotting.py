@@ -61,6 +61,13 @@ def plot_score_variable_y(true_score, learned_score, x_min, x_max, y_min, y_max,
         score_pred = vectorised_learnt_score(ts, x, y)
         pc = axs[0, col].pcolormesh(x.squeeze(), y.squeeze(), score_pred.squeeze(), cmap=cmap)
         axs[0, col].set_title(f"Time: {ts:.2f}")
+        axs[1, col].set_xlabel(r"$x$")
+    axs[0, 0].set_ylabel(r"$y$")
+    axs[1, 0].set_ylabel(r"$y$")
+    # axs[0, 0].text('Learned Score', rotation='vertical', x=-0.4, y=0.1)
+    # axs[1, 0].text('True Score', rotation='vertical', x=-0.4, y=0.1)
+    axs[0, 0].text(-1.9, 0.0, 'Learned Score', verticalalignment='center', rotation=90)
+    axs[1, 0].text(-1.9, 0.0, 'True Score', verticalalignment='center', rotation=90)
 
     for col, ts in enumerate(t):
         vectorised_score = jax.vmap(jax.vmap(true_score, in_axes=(None, 0, None, 0)), in_axes=(None, 0, None, 0))

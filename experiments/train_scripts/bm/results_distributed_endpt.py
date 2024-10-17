@@ -11,8 +11,9 @@ from src.sdes import sde_utils, sde_bm
 def circle(theta, r=5.):
     return r * jax.numpy.cos(theta), r * jax.numpy.sin(theta)
 
+
 def plot_formatting():
-    bundle = bundles.aistats2023(column="full", nrows=1, ncols=2)
+    bundle = bundles.aistats2023(column="half", nrows=2, ncols=1)
     plt.rcParams.update(bundle)
     plt.rcParams.update(axes.lines())
     plt.rcParams.update(cycler.cycler(color=palettes.paultol_muted))
@@ -22,7 +23,7 @@ def plot_formatting():
 
 if __name__ == "__main__":
 
-    formatting = False
+    formatting = True
 
     if formatting:
         plot_formatting()
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     thetas_50 = jax.numpy.linspace(0, 2 * jax.numpy.pi, 20)
     x, y = circle(thetas_50, 3.0)
 
-    fig, axs = plt.subplot_mosaic([["centre", "circ"]], sharex=True, sharey=True)
+    fig, axs = plt.subplot_mosaic([["centre"], ["circ"]], sharex=True, sharey=True)
 
     scatter_kwargs = {"s": 10}
     plot_kwargs = {"alpha": 0.5, "linewidth": 0.5}
@@ -69,4 +70,3 @@ if __name__ == "__main__":
     axs["circ"].plot(x, y, color="grey", alpha=0.5, linewidth=0.7)
 
     plt.savefig("bm_endpt_distribution_r_3.pdf")
-    plt.savefig("bm_endpt_distribution_r_3.png")

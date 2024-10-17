@@ -1,5 +1,5 @@
 import src.models
-from experiments.plotting import plot_score_error_variable_y, load_checkpoint_w_batch_stats
+from experiments.plotting import plot_score_error_variable_y, plot_score_variable_y, load_checkpoint_w_batch_stats
 
 from src.sdes import sde_ornstein_uhlenbeck
 from tueplots import bundles, axes, cycler, figsizes
@@ -33,12 +33,12 @@ def plot_data():
         axs[i].set_title(f"Time: {t:.2f}")
         axs[i].set_xlabel(r"$x$")
     axs[0].set_ylabel(r"$y$")
-    plt.savefig("figs/data.png")
+    plt.savefig("figs/data.pdf")
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
 
-    formatting = False
+    formatting = True
 
     if formatting:
         format_plt()
@@ -59,8 +59,13 @@ if __name__=="__main__":
 
     cmap = "PuRd"
 
-    fig, axs = plot_score_error_variable_y(true_score, trained_score, -1, 1, -1, 1, cmap=cmap)
-    plt.savefig('figs/ou_score_varied_y_-1.0_to_1.0_error.png')
+    # plt.rcParams.update(figsizes.aistats2023_full(nrows=1, ncols=3))
+    # fig, axs = plot_score_error_variable_y(true_score, trained_score, -1, 1, -1, 1, cmap=cmap)
+    # plt.savefig('figs/ou_score_varied_y_-1.0_to_1.0_error.pdf')
 
+    plt.rcParams.update(figsizes.aistats2023_full(nrows=2, ncols=3))
+    fig, axs = plot_score_variable_y(true_score, trained_score, -1, 1, -1, 1, cmap='viridis')
+    plt.savefig('figs/ou_score_varied_y_-1.0_to_1.0.pdf')
+
+    plt.rcParams.update(figsizes.aistats2023_full(nrows=1, ncols=3))
     plot_data()
-
