@@ -40,7 +40,7 @@ def plot_data():
 
 if __name__ == "__main__":
 
-    formatting = True
+    formatting = False
 
     if formatting:
         format_plt()
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     plt.rcParams.update(figsizes.aistats2023_full(nrows=2, ncols=3))
     fig, axs = plot_score_variable_y(true_score, trained_score, -1, 1, -1, 1, cmap='viridis')
-    plt.savefig('figs/learn_y.pdf')
+    plt.savefig('figs/learn_y.png')
 
     plt.rcParams.update(figsizes.aistats2023_full(nrows=1, ncols=3))
     plot_data()

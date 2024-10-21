@@ -91,11 +91,11 @@ def _create_train_step_learn_y(key, model, optimiser, *model_init_sizes, dt, sco
     init_params = variables["params"]
     init_opt_state = optimiser.init(init_params)
 
-    # @jax.jit
+    @jax.jit
     def train_step(params, batch_stats, opt_state, times, trajectory, correction):
         y = trajectory[:, -1]
         y = jnp.repeat(y, (trajectory.shape[1] - 1), axis=0)
-        t, traj, correction, true_score, diffusion = _data_setup_forward(times, trajectory, correction, score)
+        t, traj, correction, true_score, diffusion = _data_setup_y(times, trajectory, correction, score)
 
         def loss_fn(params_):
             prediction, updates = model.apply(
@@ -200,6 +200,7 @@ def _data_setup(times, trajectory, correction, score):
     return t, reversed_traj, correction, true_score, covs
 
 
+# @partial(jax.jit, static_argnames=["score"])
 def _data_setup_y(times, trajectory, correction, score):
     traj = trajectory[:, :-1]
     traj_plus1 = trajectory[:, 1:]
@@ -208,15 +209,14 @@ def _data_setup_y(times, trajectory, correction, score):
 
     time_step_score = jax.vmap(score, in_axes=(0, 0, 0, 0))
     batched_score = jax.vmap(time_step_score, in_axes=(0, 0, 0, 0))
-    true_score_minus, covs = batched_score(t, traj, t_plus1, traj_plus1)
-    true_score = -true_score_minus
+    true_score, covs = batched_score(t, traj, t_plus1, traj_plus1)
 
-    traj_plus1 = traj_plus1.reshape(-1, traj.shape[-1])
-    t_plus1 = t_plus1.reshape(-1, t.shape[-1])
+    traj = traj.reshape(-1, traj.shape[-1])
+    t = t.reshape(-1, t.shape[-1])
     true_score = true_score.reshape(-1, traj.shape[-1])
-    covs = covs.reshape(t_plus1.shape[0], traj_plus1.shape[-1], -1)
+    covs = covs.reshape(t.shape[0], traj.shape[-1], -1)
 
-    return t_plus1, traj_plus1, 1.0, true_score, covs
+    return t, traj, 1.0, true_score, covs
 
 
 
